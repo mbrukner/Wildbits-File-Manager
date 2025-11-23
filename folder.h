@@ -84,6 +84,8 @@
 #define FNX_FILETYPE_MP3	207 // a .mp3 file that f/manager will try to pass to audioplayer.pgz
 #define FNX_FILETYPE_OGG	208 // a .ogg file that f/manager will try to pass to audioplayer.pgz
 #define FNX_FILETYPE_WAV	209 // a .wav file that f/manager will try to pass to audioplayer.pgz
+#define FNX_FILETYPE_VGM	210 // a .vgm file that f/manager will try to pass to vgmplayer.pgz
+#define FNX_FILETYPE_RSD	211 // a .rsd (raw SID) file that f/manager will try to pass to rsdplayer.pgz
 
 
 

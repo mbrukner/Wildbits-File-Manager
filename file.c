@@ -124,6 +124,14 @@ uint8_t File_GetFileTypeFromExtension(uint8_t default_file_type, const char* the
 	{
 		return FNX_FILETYPE_MIDI;
 	}
+	else if (General_Strncasecmp((char*)&temp_file_extension_buffer, "vgm", FILE_MAX_EXTENSION_SIZE) == 0)
+	{
+		return FNX_FILETYPE_VGM;
+	}
+	else if (General_Strncasecmp((char*)&temp_file_extension_buffer, "rsd", FILE_MAX_EXTENSION_SIZE) == 0)
+	{
+		return FNX_FILETYPE_RSD;
+	}
 	else if (General_Strncasecmp((char*)&temp_file_extension_buffer, "mp3", FILE_MAX_EXTENSION_SIZE) == 0)
 	{
 		return FNX_FILETYPE_MP3;
@@ -239,6 +247,14 @@ char* File_GetFileTypeString(uint8_t cbm_filetype_id)
 		case FNX_FILETYPE_MIDI:
 			// a midi file that can be opened with a midi player
 			return General_GetString(ID_STR_FILETYPE_MIDI);
+		
+		case FNX_FILETYPE_VGM:
+			// a VGM (video game music) file that can be opened with a VGM player
+			return General_GetString(ID_STR_FILETYPE_VGM);
+		
+		case FNX_FILETYPE_RSD:
+			// a raw SID file that can be opened with a raw SID player
+			return General_GetString(ID_STR_FILETYPE_RSD);
 		
 		default:
 			//sprintf(global_string_buff1, "Unrecognized file type: %u", cbm_filetype_id);

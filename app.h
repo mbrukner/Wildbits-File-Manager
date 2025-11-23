@@ -45,7 +45,7 @@
 
 #define MAJOR_VERSION	1
 #define MINOR_VERSION	1
-#define UPDATE_VERSION	8
+#define UPDATE_VERSION	9
 
 #define VERSION_NUM_X	0
 #define VERSION_NUM_Y	24
@@ -76,7 +76,8 @@
 
 
 #define DEVICE_LOWEST_DEVICE_NUM	0
-#define DEVICE_HIGHEST_DEVICE_NUM	2
+//#define DEVICE_HIGHEST_DEVICE_NUM	0	// use only if you are building for blackboard K2 with x2 FPGA: it has bug that doesn't support IEC and causes lockup when IEC bus is scanned by kernel. 
+#define DEVICE_HIGHEST_DEVICE_NUM	2	// 0=sd card, 1=IEC8, 2=IEC9. 
 #define DEVICE_MAX_DEVICE_COUNT		(DEVICE_HIGHEST_DEVICE_NUM - DEVICE_LOWEST_DEVICE_NUM + 1)
 
 #define NO_DISK_PRESENT_FILE_NAME	31	// this is a char I see reported as a "islbl" by tool when scanning a floppy disk drive with no disk in it. 
