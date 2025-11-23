@@ -43,6 +43,13 @@
 /*                               Definitions                                 */
 /*****************************************************************************/
 
+#define WORST_CASE_BYTES_USED_PER_FILE_OBJECT	36
+	// this is a safety feature to cut off dir parsing before running 
+	// completely out of memory, which can result in instable system
+	// on nov 22, 2025, with 4565 showing avail during boot,
+	// this cut off a 126 file folder at 100 files
+	// avail showed 420 bytes free after this. 
+	// seemed stable after this. but raise this number to ensure a bigger buffer
 
 /*****************************************************************************/
 /*                          File-scoped Variables                            */
@@ -889,6 +896,7 @@ uint8_t Folder_PopulateFiles(uint8_t the_panel_id, WB2KFolderObject* the_folder)
 {	
 	bool				skip_this_file;
 	bool				file_added;
+	bool				stop_processing = false;
 	uint8_t				meatloaf_info_file_cnt = 0;	// if in meatloaf mode, treat first 4 files as info-only files. convert last one to '..'
 	uint8_t				meatloaf_slash_cnt = 0;			// used to parse the INFO file row and tell if we're on root or not.
 	uint8_t				i;
@@ -899,10 +907,22 @@ uint8_t Folder_PopulateFiles(uint8_t the_panel_id, WB2KFolderObject* the_folder)
 	struct dirent*		dirent;
 	uint8_t				the_error_code = ERROR_NO_ERROR;
 	uint16_t			file_cnt = 0;
+	uint16_t			max_file_cnt;
 	WB2KFileObject*		this_file;
 	DateTime			this_datetime;
 	uint16_t			the_block_size;
 
+	// LOGIC:
+	//   read through as many files as there is memory to hold
+	//   when files can no longer be parsed due to memory issues, stop, report that some weren't read, 
+	//   but allow rest to be used as the contents of the directory, as if all files had been read.
+	//   we pre-limit the number to be read by checking heap and dividing by bytes needed per file object
+	//   stop_processing is set if somehow the prelimit doesn't work, and a New_File call fails.
+	//     this *may* result in ok-ness, but is probably more likely to result in a subsequent freeze as too little memory left.
+	//   max_file_cnt is the primary prevention mechanism, and is set based on available heap and magic macro def.
+	
+	max_file_cnt = _heapmemavail() / WORST_CASE_BYTES_USED_PER_FILE_OBJECT;
+	
 	//	uint8_t* 	temp_ptr;// = (uint8_t*)&dirent->d_blocks;
 	
 	if (the_folder == NULL)
@@ -949,7 +969,7 @@ uint8_t Folder_PopulateFiles(uint8_t the_panel_id, WB2KFolderObject* the_folder)
 		return ERROR_COULD_NOT_OPEN_DIR;
 	}
 	
-    while ( (dirent = Kernel_ReadDir(dir)) != NULL )
+    while ( (dirent = Kernel_ReadDir(dir)) != NULL && file_cnt < max_file_cnt && stop_processing == false )
     {
         // is this is the disk name, or a file?
 		//temp_ptr = (uint8_t*)&dirent->d_bytes;
@@ -1049,12 +1069,16 @@ uint8_t Folder_PopulateFiles(uint8_t the_panel_id, WB2KFolderObject* the_folder)
 				
 						if (this_file == NULL)
 						{
+							// if we couldn't create the fake ".." file, this is probably a real error condition. do not attempt to continue.
+							//stop_processing = true;
 							goto error;
 						}
-				
-						// Add this file to the list of files
-						file_added = Folder_AddNewFile(the_folder, this_file);
-						++file_cnt;						
+						else
+						{
+							// Add this file to the list of files
+							file_added = Folder_AddNewFile(the_folder, this_file);
+							++file_cnt;						
+						}
 					}
 					
 					meatloaf_info_file_cnt = 4;
@@ -1108,22 +1132,24 @@ uint8_t Folder_PopulateFiles(uint8_t the_panel_id, WB2KFolderObject* the_folder)
 		
 					if (this_file == NULL)
 					{
-						goto error;
+						stop_processing = true;
 					}
-		
-					// Add this file to the list of files
-					file_added = Folder_AddNewFile(the_folder, this_file);
-		
-					// if this is first file in scan, preselect it
-					if (file_cnt == 0)
+					else
 					{
-						this_file->selected_ = true;
-					}
+						// Add this file to the list of files
+						file_added = Folder_AddNewFile(the_folder, this_file);
 			
-					++file_cnt;
-					
-					//sprintf(global_string_buff1, "file '%s' identified as folder by _DE_ISDIR, added=%u", dirent->d_name, file_added);
-					//Buffer_NewMessage(global_string_buff1);
+						// if this is first file in scan, preselect it
+						if (file_cnt == 0)
+						{
+							this_file->selected_ = true;
+						}
+				
+						++file_cnt;
+						
+						//sprintf(global_string_buff1, "file '%s' identified as folder by _DE_ISDIR, added=%u", dirent->d_name, file_added);
+						//Buffer_NewMessage(global_string_buff1);
+					}
 				}
 			}
 			else if (_DE_ISLBL(dirent->d_type))
@@ -1216,21 +1242,23 @@ uint8_t Folder_PopulateFiles(uint8_t the_panel_id, WB2KFolderObject* the_folder)
 			
 						if (this_file == NULL)
 						{
-							goto error;
+							stop_processing = true;
 						}
 					}
 					
-		
-					// Add this file to the list of files
-					file_added = Folder_AddNewFile(the_folder, this_file);
-		
-					// if this is first file in scan, preselect it
-					if (file_cnt == 0)
+					if (stop_processing != true)
 					{
-						this_file->selected_ = true;
-					}
+						// Add this file to the list of files
+						file_added = Folder_AddNewFile(the_folder, this_file);
 			
-					++file_cnt;
+						// if this is first file in scan, preselect it
+						if (file_cnt == 0)
+						{
+							this_file->selected_ = true;
+						}
+				
+						++file_cnt;
+ 					}
 					
 					//DEBUG_OUT(("%s %d: file '%s' identified by _DE_ISREG", __func__ , __LINE__, dirent->d_name));
 					//sprintf(global_string_buff1, "file '%s' datetime=%u-%u-%u %u:%u:%u", dirent->d_name, this_datetime.year, this_datetime.month, this_datetime.day, this_datetime.hour, this_datetime.min, this_datetime.sec);
@@ -1271,6 +1299,13 @@ uint8_t Folder_PopulateFiles(uint8_t the_panel_id, WB2KFolderObject* the_folder)
 // 	DEBUG_OUT(("%s %d: Total bytes %lu", __func__ , __LINE__, the_folder->total_bytes_));
 // 	Folder_Print(the_folder);
 
+	// Inform user if we had to stop processing directory due to low memory issues
+	if (file_cnt >= max_file_cnt)
+	{
+		sprintf(global_string_buff1, General_GetString(ID_STR_TRUNCATED_DIR_WARNING), file_cnt);
+		Buffer_NewMessage(global_string_buff1);
+	}
+	
 	sprintf(global_string_buff1, General_GetString(ID_STR_N_FILES_FOUND), file_cnt);
 	Buffer_NewMessage(global_string_buff1);
 	
@@ -1382,7 +1417,7 @@ bool Folder_CopyFile(WB2KFolderObject* the_folder, WB2KFileObject* the_file, WB2
 // 		FileMover_UpdateCurrentTargetFolderPath(App_GetFileMover(global_app), the_folder->folder_file_->file_path_);
 // 		the_target_folder_path = FileMover_GetCurrentTargetFolderPath(App_GetFileMover(global_app));
 		
-		// check if the new file path is the same as the old: would be the case in a 'duplicate this file' situation
+		// check if the new file path is the same as the old: would be the case in a 'duplicate this file' situationx
 		// if so, figure out a compliant name that is unique. in fact, don't compare to the file at all, compare to entire folder!
 		strcpy(folder_temp_filename, App_GetFilenameFromEM(the_file));
 		name_uniqueifier = 48; // start artificially high so it resets to 48. 

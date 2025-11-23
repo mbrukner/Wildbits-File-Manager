@@ -78,62 +78,62 @@
 76	6	(More)
 77	14	%u files found
 78	27	Available memory: %zu bytes
-79	11	Hit any key
-80	58	** Hex view of '%s' -- SPACE for more; Run/Stop to exit **
-81	59	** Text view of '%s' -- SPACE for more; Run/Stop to exit **
-82	141	The program has been loaded into memory at $28000. From SuperBASIC, type 'xgo' to access your program. Press any key to switch to SuperBASIC.
-83	48	A match to '%s' was found at %06lX in Bank $%02X
-84	26	No match to '%s' was found
-85	18	_apps/textedit.pgz
-86	20	_apps/midiplayer.pgz
-87	19	_apps/modplayer.pgz
-88	21	_apps/audioplayer.pgz
-89	19	_apps/vgmplayer.pgz
-90	22	_apps/rawsidplayer.pgz
-91	3	dsk
-92	3	 d 
-93	3	lnk
-94	3	par
-95	3	oth
-96	3	bas
-97	3	exe
-98	3	fnt
-99	3	mus
-100	3	img
-101	3	txt
-102	3	mid
-103	3	mp3
-104	3	ogg
-105	3	wav
-106	3	vgm
-107	3	rsd
-108	14	Fatal error %u
-109	21	Unable to delete file
-110	26	Unable to delete directory
-111	40	We don't need no stinkin' error messages
-112	75	No connected devices were detected. f/manager will probably die of boredom.
-113	16	The disk is full
-114	21	A disk error occurred
-115	33	No disk detected in disk drive %u
-116	60	Error: I did not like that file. I will not show that file. 
-117	31	Error: Could not open file '%s'
-118	31	Error: Could not list directory
-119	39	Error: You cannot copy a bank to itself
-120	74	Error: All these banks are yours, except Europa. Attempt no landing there.
-121	142	No text editor was found. To open .txt files, install a text editor at '/_apps/textedit.pgz'. mless is an example of a compatible text editor.
-122	146	No MIDI player was found. To load .mid files, install a MIDI player at '/_apps/midiplayer.pgz'. midisam is an example of a compatible MIDI player.
-123	141	No mod player was found. To load .mod files, install a mod player at '/_apps/modplayer.pgz'. modojr is an example of a compatible mod player.
-124	173	No player was found. To load .mp3, .ogg, and .wav files, install a suitable audio player at '/_apps/audioplayer.pgz'. F256amp.pgz is an example of a compatible audio player.
-125	150	No VGM player was found. To load .vgm files, install a VGM player at '/_apps/vgmplayer.pgz'. opl3snooper.pgz is an example of a compatible VGM player.
-126	163	No raw SID player was found. To load .rsd files, install a raw SID player at '/_apps/rsdplayer.pgz'. rawsidplayer.pgz is an example of a compatible raw SID player.
-127	19	Out of memory error
-128	46	https://github.com/WartyMN/F256jr-FileManager/
-129	97	F256 hardware design %c2024 Stefany Allaire. FPGA %02X%02X.%02X%02X.%02X%02X, PCB %02X%02X '%c%c'
-130	75	F256 MicroKernel %c20%c%c Jessie Oberreuter. Build %c%c, 20%c%c-%c%c-%c%c. 
-131	42	Compact pexec loader for flash by dwsJason
-132	36	F256 SuperBASIC %c2023 Paul Robson. 
-133	50	F256 f/manager %c2025 Micah Bly. Version %u.%ub%u.
-134	6	F256JR
-135	5	F256K
-136	18	<unknown hardware>
-	
+79	52	Directory only partially processed due to low memory
+80	11	Hit any key
+81	58	** Hex view of '%s' -- SPACE for more; Run/Stop to exit **
+82	59	** Text view of '%s' -- SPACE for more; Run/Stop to exit **
+83	141	The program has been loaded into memory at $28000. From SuperBASIC, type 'xgo' to access your program. Press any key to switch to SuperBASIC.
+84	48	A match to '%s' was found at %06lX in Bank $%02X
+85	26	No match to '%s' was found
+86	18	_apps/textedit.pgz
+87	20	_apps/midiplayer.pgz
+88	19	_apps/modplayer.pgz
+89	21	_apps/audioplayer.pgz
+90	19	_apps/vgmplayer.pgz
+91	22	_apps/rawsidplayer.pgz
+92	3	dsk
+93	3	 d 
+94	3	lnk
+95	3	par
+96	3	oth
+97	3	bas
+98	3	exe
+99	3	fnt
+100	3	mus
+101	3	img
+102	3	txt
+103	3	mid
+104	3	mp3
+105	3	ogg
+106	3	wav
+107	3	vgm
+108	3	rsd
+109	14	Fatal error %u
+110	21	Unable to delete file
+111	26	Unable to delete directory
+112	40	We don't need no stinkin' error messages
+113	75	No connected devices were detected. f/manager will probably die of boredom.
+114	16	The disk is full
+115	21	A disk error occurred
+116	33	No disk detected in disk drive %u
+117	60	Error: I did not like that file. I will not show that file. 
+118	31	Error: Could not open file '%s'
+119	31	Error: Could not list directory
+120	39	Error: You cannot copy a bank to itself
+121	74	Error: All these banks are yours, except Europa. Attempt no landing there.
+122	142	No text editor was found. To open .txt files, install a text editor at '/_apps/textedit.pgz'. mless is an example of a compatible text editor.
+123	146	No MIDI player was found. To load .mid files, install a MIDI player at '/_apps/midiplayer.pgz'. midisam is an example of a compatible MIDI player.
+124	141	No mod player was found. To load .mod files, install a mod player at '/_apps/modplayer.pgz'. modojr is an example of a compatible mod player.
+125	173	No player was found. To load .mp3, .ogg, and .wav files, install a suitable audio player at '/_apps/audioplayer.pgz'. F256amp.pgz is an example of a compatible audio player.
+126	150	No VGM player was found. To load .vgm files, install a VGM player at '/_apps/vgmplayer.pgz'. opl3snooper.pgz is an example of a compatible VGM player.
+127	163	No raw SID player was found. To load .rsd files, install a raw SID player at '/_apps/rsdplayer.pgz'. rawsidplayer.pgz is an example of a compatible raw SID player.
+128	19	Out of memory error
+129	46	https://github.com/WartyMN/F256jr-FileManager/
+130	97	F256 hardware design %c2024 Stefany Allaire. FPGA %02X%02X.%02X%02X.%02X%02X, PCB %02X%02X '%c%c'
+131	75	F256 MicroKernel %c20%c%c Jessie Oberreuter. Build %c%c, 20%c%c-%c%c-%c%c. 
+132	42	Compact pexec loader for flash by dwsJason
+133	36	F256 SuperBASIC %c2023 Paul Robson. 
+134	50	F256 f/manager %c2025 Micah Bly. Version %u.%ub%u.
+135	6	F256JR
+136	5	F256K
+137	18	<unknown hardware>
