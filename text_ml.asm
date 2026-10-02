@@ -33,12 +33,12 @@
 	.export _Text_ScrollTextUp
 	.export _Text_ScrollTextDown
 	.export _Text_DrawByteAsHexChars
-	
+
 ;	.export _text_memory_iterate
 ;	.export _text_setchar
 ;	.export _text_do_cr
-	
-	
+
+
 ; Variables to export
 	.exportzp	_zp_ptr
 	.exportzp	_zp_vram_ptr
@@ -47,8 +47,8 @@
 	.exportzp	_zp_char		; if writing a char, the value to write
 	.exportzp	_zp_attr		; if writing an attr, the value to write
 	.exportzp	_zp_for_attr	; if 0, action will be towards char memory.
-	
-; maybe export. review later.	
+
+; maybe export. review later.
 	.exportzp	_zp_sava
 	.exportzp	_zp_savx
 	.exportzp	_zp_savy
@@ -58,7 +58,7 @@
 
 ; definitions - common
 
-; F256jr/k classic memory layout MMU
+; Wildbits/k classic memory layout MMU
 MMU_MEM_CTRL		= $0000	;// bit 0-1: activate LUT (exit editing); 4-5 LUT to be edited; 7: activate edit mode
 MMU_IO_CTRL			= $0001	;// bits 0-1: IO page; bit 2: disable IO
 
@@ -74,7 +74,7 @@ BANK_KERNAL			= $07	;// 0xe000-0xffff
 
 ; definitions - this class only
 
-VRAM				= $C000	; F256 classic memory schemes have both attr and chars at this address. use vicky page to control what gets written to.
+VRAM				= $C000	; WILDBITS classic memory schemes have both attr and chars at this address. use vicky page to control what gets written to.
 VICKY_TEXT_X_POS	= $D014	; 2-byte
 VICKY_TEXT_Y_POS	= $D016	; 2-byte
 
@@ -142,40 +142,36 @@ _zp_cnt:			.res 2,$00	; for counting up towards zp_len. private.
 ; ------------------
 
 
-; routine that will start at a specified address, and iterate through a specified number of bytes, 
-; update the current address as it goes. 
+; routine that will start at a specified address, and iterate through a specified number of bytes,
+; update the current address as it goes.
 ; it will jsr to the function whose address is found in zp_func_ptr on every loop
 ; will work on both the current execution bank, and on the indirection data bank (if $01 is set)
-; does not rely on A, X, or Y being in any particular state after 
+; does not rely on A, X, or Y being in any particular state after
 
 _text_memory_iterate:
-	lda _zp_func_ptr	; self-modifying code to set the "jsr-to" location
-	sta @loop+1
-	lda _zp_func_ptr+1
-	sta @loop+2
-	
+    lda _zp_len
+    ora _zp_len+1
+    beq @done
+    lda _zp_func_ptr
+    sta @loop+1
+    lda _zp_func_ptr+1
+    sta @loop+2
 @loop:
-	jsr $0000	; this address will be modified by calling routines
-	dec _zp_len
-	lda _zp_len
-	cmp #$00
-	bne @inc_addr
-	lda _zp_len+1
-	cmp #$00
-	beq @done
-	dec _zp_len+1
-
-@inc_addr:
-	inc _zp_ptr
-	lda _zp_ptr
-	cmp #$00
-	bne @loop
-	inc _zp_ptr+1
-	jmp @loop
-
+    jsr $0000
+    inc _zp_ptr
+    bne @decrement
+    inc _zp_ptr+1
+@decrement:
+    lda _zp_len
+    bne @low
+    dec _zp_len+1
+@low:
+    dec _zp_len
+    lda _zp_len
+    ora _zp_len+1
+    bne @loop
 @done:
-	rts
-
+    rts
 
 ; private part of invert function
 invert_function:
@@ -200,108 +196,43 @@ invert_function:
 
 
 
-; asm call only function that won't get the extra cc65 jazz. 
-; is called by Text_SetChar, but other ASM routines can also use it. 
+; asm call only function that won't get the extra cc65 jazz.
+; is called by Text_SetChar, but other ASM routines can also use it.
 ;   calling function is responsible for making sure everything is set up
 ;     that includes saving .Y and .A if important.
 
 _text_setchar:
-	sta (_zp_vram_ptr),y
-@test_for_line_wrap:
-	inc _zp_x
-	lda _zp_x
-	cmp #SCREEN_NUM_COLS
-	bcc @inc_addr
-	jsr _text_do_cr			; will handle changing x, y, and vram ptr
-	rts
-@inc_addr:
-	inc _zp_vram_ptr
-	lda _zp_vram_ptr
-	bne @done
-	inc _zp_vram_ptr+1
+    sta (_zp_vram_ptr),y
+    ; Saturate at the last screen cell, otherwise advance with line wrap.
+    lda _zp_x
+    cmp #SCREEN_LAST_COL
+    bcc @advance
+    lda _zp_y
+    cmp #SCREEN_LAST_ROW
+    bcs @done
+    stz _zp_x
+    inc _zp_y
+    bra @pointer
+@advance:
+    inc _zp_x
+@pointer:
+    inc _zp_vram_ptr
+    bne @done
+    inc _zp_vram_ptr+1
 @done:
-	jmp _text_update_cur_pos
-
-
-
-
-; asm call only function that adds 1 to the x pos, and if necessary, wraps to start of next line
-; if x and y are at last pos on screen, it will just stop there.
-
-_text_inc_xpos_with_wrap:
-	; increment x if possible; wrap and inc y if necessary
-	lda _zp_x				; are we already on the last col of the row?
-	cmp #SCREEN_LAST_COL
-	bcs @inc_normally
-	ldy _zp_y				; we are on last col. is it the last row tho?
-	cpy #SCREEN_LAST_ROW
-	bcs @inc_normally
-	; nothing to do here. we never go past last cell of screen
-	rts
-	
-@inc_normally:
-	inc _zp_x
-	cmp #SCREEN_NUM_COLS
-	bcc @inc_addr
-	stz _zp_x
-	inc _zp_y
-	
-@inc_addr:
-	inc _zp_vram_ptr
-	lda _zp_vram_ptr
-	bne @done
-	inc _zp_vram_ptr+1
-
-@done:
-	rts
-
+    rts
 
 ; asm-only call to update the VICKY's x and y cursor pos with latest from Text engine
 ; mangles .a. changes IO control.
 
 _text_update_cur_pos:
 	lda #VICKY_IO_PAGE_REGISTERS
-	sta MMU_IO_CTRL	
+	sta MMU_IO_CTRL
 	lda _zp_x
 	sta VICKY_TEXT_X_POS
 	lda _zp_y
 	sta VICKY_TEXT_Y_POS
 	rts
-	
-
-
-
-; asm call only CR function that won't get the extra cc65 jazz. 
-; calling function is responsible for making sure everything is set up
-; ends the current line where it is, erasing to right edge with spaces, and moves cursor pos to start of next line
-; mangles .A, .X. modifies zp_x, zp_y, zp_vram_ptr
-
-; NOTE: the below function almost works, but doesn't quite. found better way to do it on b128. 
-;       but in case need to do this for a platform that doesn't have C= style kernal...
-
-_text_do_wrap:
-	dec _zp_x		; this entrance point is not for CR code, but for when x has already gone to 80
-					; we need it back to 79
-_text_do_cr:
-	lda #SCREEN_LAST_COL
-	sec
-	sbc _zp_x
-	cmp #$00		; it's possible to have 80 chars, then CR. add a full blank line in that case. 
-	bne @pre_loop
-	lda #SCREEN_NUM_COLS
-@pre_loop:
-	tax
-@cr_loop:
-	lda #$20		; space char
-	jsr _text_setchar
-	dex  
-	cpx #$00
-	bne @cr_loop
-@cr_done:
-	rts
-
-
-
 
 
 
@@ -329,6 +260,8 @@ Text_Invert:
 	lda _zp_vram_ptr+1
 	sta _zp_ptr+1
 
+    lda MMU_IO_CTRL
+    pha
 	lda #VICKY_IO_PAGE_ATTR_MEM
 	sta MMU_IO_CTRL
 
@@ -338,11 +271,12 @@ Text_Invert:
 	sta _zp_func_ptr
 	lda #>invert_function
 	sta _zp_func_ptr+1
-	
+
 	jsr _text_memory_iterate
-	
+    pla
+    sta MMU_IO_CTRL
 	rts
-	
+
 .endproc
 
 
@@ -366,16 +300,23 @@ Text_Invert:
 
 	; calling method should already have set zp_x, zp_y, and zp_vram_ptr
 
-	sty _zp_savy
-
+    phy
+    pha
+    lda MMU_IO_CTRL
+    sta _zp_sava
+    pla
+    ldy _zp_sava
+    phy
 	ldy #VICKY_IO_PAGE_CHAR_MEM
-	sty MMU_IO_CTRL	
+	sty MMU_IO_CTRL
 
 	ldy #$00		; set up for indirect indexing
 	jsr _text_setchar
 	jsr _text_update_cur_pos
-	
-	ldy _zp_savy	; restore .y to what it was at entrance
+
+    pla
+    sta MMU_IO_CTRL
+    ply
 	rts
 
 .endproc
@@ -403,44 +344,39 @@ Text_Invert:
 	; calling method should already have set zp_ptr and zp_len and zp_vram_ptr
 
 Draw_Chars:
-	sta _zp_len
-	stx _zp_len+1
-	ldy #VICKY_IO_PAGE_CHAR_MEM
-	sty MMU_IO_CTRL	
-	ldy #$00		; set up for indirect indexing
-
-	lda _zp_ptr	; self-modifying code to set the read-from location so we avoid changing memory bank
-	sta @loop+1
-	lda _zp_ptr+1
-	sta @loop+2
-
+    sta _zp_len
+    stx _zp_len+1
+    lda MMU_IO_CTRL
+    pha
+    lda #VICKY_IO_PAGE_CHAR_MEM
+    sta MMU_IO_CTRL
+    ldy #0
+    lda _zp_len
+    ora _zp_len+1
+    beq @done
 @loop:
-	lda $beef		; this will be self-modified. Do not use "0000" or ca65 will pick a5 not a9 for LDA
-	sta (_zp_vram_ptr),y
-	iny
-	cpy _zp_len
-	bne @inc_addr
-	lda _zp_len+1
-	cmp #$00
-	beq @done
-	lda #$ff		; zp len might have been 1 or 15 or 255 on first pass, 
-	sta _zp_len		; but need it to be 255 for 2nd+, once zp_len+1 rolls over
-	dec _zp_len+1
-	inc _zp_vram_ptr+1
-
-@inc_addr:
-	inc _zp_ptr
-	inc @loop+1
-	lda _zp_ptr
-	cmp #$00
-	bne @ready_for_next_loop
-	inc _zp_ptr+1
-	inc @loop+2
-@ready_for_next_loop:
-	jmp @loop
-
+    lda (_zp_ptr),y
+    sta (_zp_vram_ptr),y
+    inc _zp_ptr
+    bne @dest
+    inc _zp_ptr+1
+@dest:
+    inc _zp_vram_ptr
+    bne @decrement
+    inc _zp_vram_ptr+1
+@decrement:
+    lda _zp_len
+    bne @low
+    dec _zp_len+1
+@low:
+    dec _zp_len
+    lda _zp_len
+    ora _zp_len+1
+    bne @loop
 @done:
-	rts
+    pla
+    sta MMU_IO_CTRL
+    rts
 
 .endproc
 
@@ -461,12 +397,14 @@ Draw_Chars:
 .segment	"CODE"
 
 set_vram_address:
-	
+    lda MMU_IO_CTRL
+    pha
+
 	lda #>VRAM	; hi byte of $d000 VRAM base address
 	sta _zp_vram_ptr+1
 	lda #$00
 	sta _zp_vram_ptr	; zp vram addr now reset to base $d000
-	
+
 	ldx _zp_vram_ptr+1	; #>VRAM
 
 ; calculate screen row
@@ -493,9 +431,10 @@ calcx:
 calc_done:
 	sta _zp_vram_ptr	; save pointer to screen location (LO)
 	stx _zp_vram_ptr+1	; save pointer to screen location (HI)
-	
+
 	jsr _text_update_cur_pos
-	
+    pla
+    sta MMU_IO_CTRL
 	rts
 
 .endproc
@@ -526,35 +465,45 @@ calc_done:
 	; _zp_to_ptr will be the row above
 	; both are VRAM locs, so indirection bank will be set to 15 and left there
 	; after one row's worth is copied, adjust subtract 80 from zp_ptr and loop back
-	
-	; common checks - same for scroll up or down	
+
+	; common checks - same for scroll up or down
 	; validate inputs
-	sta _zp_x_cnt	; save num cols parameter
+	sta _zp_x_cnt
+    lda MMU_IO_CTRL
+    pha
+    lda _zp_x_cnt
 	cmp #$00		; check that at least 1 char is being scrolled
-	beq @error
+	jeq @error
 	cmp #(SCREEN_NUM_COLS+1)	; check that # cols is not greater than # of total cols on screen
-	bcs @error
-	
+	jcs @error
+
 	lda _zp_y_cnt
 	cmp #$00		; check that text is being scrolled at least 1 row
-	beq @error
+	jeq @error
 	cmp #SCREEN_NUM_ROWS	; check that # rows is not greater than # of total cols on screen - 1
-	bcs @error
-	
+	jcs @error
+
 	lda _zp_x
-	cmp #(SCREEN_LAST_COL+1)	; check that starting x is not past the last col
-	beq @error
-	
+    clc
+    adc _zp_x_cnt
+    cmp #(SCREEN_NUM_COLS+1)
+    jcs @error
+
 	lda _zp_y
 	cmp #$00		; check that starting y is not first row: we are scrolling up, and so starting at 0 makes no sense
-	beq @error
+	jeq @error
 	cmp #(SCREEN_LAST_ROW+1)	; check that starting y is not past the last row
-	beq @error
+	jeq @error
+
+    clc
+    adc _zp_y_cnt
+    cmp #(SCREEN_NUM_ROWS+1)
+    jcs @error
 
 	ldy #$00		; set up for indirect indexing
 	lda #VICKY_IO_PAGE_CHAR_MEM
 	sta MMU_IO_CTRL
-	
+
 	; set up _zp_from_ptr and _zp_to_ptr from zp_vram_ptr
 	lda _zp_vram_ptr+1
 	sta _zp_from_ptr+1
@@ -568,7 +517,7 @@ calc_done:
 	sta _zp_to_ptr
 	bcs @loop
 	dec _zp_to_ptr+1
-	
+
 @loop:
 	lda (_zp_from_ptr),y
 	sta (_zp_to_ptr),y
@@ -599,9 +548,11 @@ calc_done:
 	adc #$00
 	sta _zp_from_ptr+1
 	jmp @loop
-	
+
 @error:
 @done:
+    pla
+    sta MMU_IO_CTRL
 	rts
 
 .endproc
@@ -631,33 +582,42 @@ calc_done:
 	; _zp_to_ptr will be the row below
 	; both are VRAM locs, so indirection bank will be set to 15 and left there
 	; after one row's worth is copied, adjust subtract 80 from zp_ptr and loop back
-	
-	; common checks - same for scroll up or down	
+
+	; common checks - same for scroll up or down
 	; validate inputs
-	sta _zp_x_cnt	; save num cols parameter
+	sta _zp_x_cnt
+    lda MMU_IO_CTRL
+    pha
+    lda _zp_x_cnt
 	cmp #$00		; check that at least 1 char is being scrolled
-	beq @error
+	jeq @error
 	cmp #(SCREEN_NUM_COLS+1)	; check that # cols is not greater than # of total cols on screen
-	bcs @error
-	
+	jcs @error
+
 	lda _zp_y_cnt
 	cmp #$00		; check that text is being scrolled at least 1 row
-	beq @error
+	jeq @error
 	cmp #SCREEN_NUM_ROWS	; check that # rows is not greater than # of total cols on screen - 1
-	bcs @error
-	
+	jcs @error
+
 	lda _zp_x
-	cmp #(SCREEN_LAST_COL+1)	; check that starting x is not past the last col
-	beq @error
-	
+    clc
+    adc _zp_x_cnt
+    cmp #(SCREEN_NUM_COLS+1)
+    jcs @error
+
 	lda _zp_y
-	cmp #SCREEN_LAST_ROW		; check that starting y is not the last row: we are scrolling down, and so starting at 24 (or higher) makes no sense
-	bcs @error
-	
+    jeq @error
+    cmp #SCREEN_NUM_ROWS
+    jcs @error
+
+    cmp _zp_y_cnt
+    jcc @error
+
 	ldy #$00		; set up for indirect indexing
 	lda #VICKY_IO_PAGE_CHAR_MEM
 	sta MMU_IO_CTRL
-	
+
 	; set up _zp_from_ptr and _zp_to_ptr from zp_vram_ptr
 	lda _zp_vram_ptr+1
 	sta _zp_from_ptr+1
@@ -672,7 +632,7 @@ calc_done:
 	sta _zp_from_ptr
 	bcs @loop
 	dec _zp_from_ptr+1
-	
+
 @loop:
 	lda (_zp_from_ptr),y
 	sta (_zp_to_ptr),y
@@ -696,10 +656,11 @@ calc_done:
 	sta _zp_to_ptr
 
 	jmp @subtract_one_row
-	
+
 @error:
 @done:
-	cli				; allow interrupts again
+    pla
+    sta MMU_IO_CTRL
 	rts
 
 .endproc
@@ -732,14 +693,14 @@ calc_done:
 	; LOGIC:
 	;   Based on code from Jim Butterfield's SuperMon64, as found here:
 	;   https://github.com/jblang/supermon64/blob/master/supermon64.asm
-	
+
 DrawByteAsHexChars:
 	jsr @convert2hex	; a has first hex digit (upper), x has second (lower) after this
 	jsr _Text_SetChar
-	txa				
+	txa
 	jsr _Text_SetChar
 	rts
-	
+
 	; convert byte in A to hex digits
 @convert2hex:
 	pha				; save byte

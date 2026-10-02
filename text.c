@@ -7,7 +7,7 @@
 
 
 // This is a cut-down, semi-API-compatible version of the OS/f text.c file from Lich King (Foenix)
-// adapted for Foenix F256 Jr starting November 29, 2022
+// adapted for Foenix WILDBITS Jr starting November 29, 2022
 
 
 
@@ -30,8 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-// F256 includes
-#include "f256.h"
+// WILDBITS includes
+#include "wildbits.h"
 
 
 
@@ -41,7 +41,7 @@
 
 // hide __fastcall_ from everything but CC65 (to squash some warnings in LSP/BBEdit)
 #ifndef __CC65__
-	#define __fastcall__ 
+	#define __fastcall__
 #endif
 
 
@@ -86,7 +86,7 @@ extern uint8_t		zp_char;
 //!  Set zp_x, zp_y before calling
 void __fastcall__ Text_SetMemLocForXY(void);
 
-//! Validate the coordinates are within the bounds of the specified screen. 
+//! Validate the coordinates are within the bounds of the specified screen.
 //! @param	x - the horizontal position to validate. Must be between 0 and the screen's text_cols_vis_ - 1
 //! @param	y - the vertical position to validate. Must be between 0 and the screen's text_rows_vis_ - 1
 bool Text_ValidateXY(int8_t x, int8_t y);
@@ -121,21 +121,21 @@ bool Text_FillMemoryBox(uint8_t x, uint8_t y, uint8_t width, uint8_t height, boo
 /*                       Private Function Definitions                        */
 /*****************************************************************************/
 
-// **** NOTE: all functions in private section REQUIRE pre-validated parameters. 
+// **** NOTE: all functions in private section REQUIRE pre-validated parameters.
 // **** NEVER call these from your own functions. Always use the public interface. You have been warned!
 
 
-//! Fill attribute or text char memory. 
+//! Fill attribute or text char memory.
 //! @param	for_attr - true to work with attribute data, false to work character data. Recommend using PARAM_FOR_TEXT_ATTR/PARAM_FOR_TEXT_CHAR.
 //! @param	the_fill - either a 1-byte character code, or a 1-byte attribute code (foreground in high nibble, background in low nibble)
 //! @return	Returns false on any error/invalid input.
 bool Text_FillMemory(bool for_attr, uint8_t the_fill)
 {
 	uint8_t*	the_write_loc;
-	
-	// LOGIC: 
-	//   On F256-classic, the write locs are same for char and attr memory, difference is IO page 2 or 3
-	//   On F256-extended, the write locs are different for char and attr memory, as E loads use flat memory map
+
+	// LOGIC:
+	//   On WILDBITS-classic, the write locs are same for char and attr memory, difference is IO page 2 or 3
+	//   On WILDBITS-extended, the write locs are different for char and attr memory, as E loads use flat memory map
 
 	if (for_attr)
 	{
@@ -148,7 +148,7 @@ bool Text_FillMemory(bool for_attr, uint8_t the_fill)
 
 	the_write_loc = (uint8_t*)SCREEN_TEXT_MEMORY_LOC;
 	memset(the_write_loc, the_fill, SCREEN_TOTAL_BYTES);
-		
+
 	Sys_RestoreIOPage();
 
 	//printf("Text_FillMemory: done \n");
@@ -168,33 +168,21 @@ bool Text_FillMemory(bool for_attr, uint8_t the_fill)
 //! @return	Returns false on any error/invalid input.
 bool Text_FillMemoryBoxBoth(uint8_t x, uint8_t y, uint8_t width, uint8_t height, uint8_t the_char, uint8_t the_attribute_value)
 {
-	uint8_t		max_row;
-
-	// set up initial loc
-	Text_SetXY(x,y);
-
-	// LOGIC: 
-	//   On F256-classic, the write locs are same for char and attr memory, difference is IO page 2 or 3
-	//   On F256-extended, the write locs are different for char and attr memory, as E loads use flat memory map
-	
-	max_row = (y + height) - 1; // we are passing '1' for a single h row
-	
-	for (; y <= max_row; y++)
-	{
-		Sys_SwapIOPage(VICKY_IO_PAGE_ATTR_MEM);
-		memset(zp_vram_ptr, the_attribute_value, width);
-		Sys_SwapIOPage(VICKY_IO_PAGE_CHAR_MEM);
-		memset(zp_vram_ptr, the_char, width);
-
-		zp_vram_ptr += SCREEN_NUM_COLS;
-	}
-
-	Sys_RestoreIOPage();
-
-	// reset current vram loc to match x,y
-	Text_SetXY(x,y);		
-
-	return true;
+    uint8_t row;
+    uint8_t old_io = R8(MMU_IO_CTRL);
+    if (!width || !height || x >= SCREEN_NUM_COLS || y >= SCREEN_NUM_ROWS ||
+        width > SCREEN_NUM_COLS - x || height > SCREEN_NUM_ROWS - y) return false;
+    Text_SetXY(x, y);
+    for (row = 0; row < height; ++row) {
+        R8(MMU_IO_CTRL) = VICKY_IO_PAGE_ATTR_MEM;
+        memset(zp_vram_ptr, the_attribute_value, width);
+        R8(MMU_IO_CTRL) = VICKY_IO_PAGE_CHAR_MEM;
+        memset(zp_vram_ptr, the_char, width);
+        zp_vram_ptr += SCREEN_NUM_COLS;
+    }
+    Text_SetXY(x, y);
+    R8(MMU_IO_CTRL) = old_io;
+    return true;
 }
 
 
@@ -209,38 +197,19 @@ bool Text_FillMemoryBoxBoth(uint8_t x, uint8_t y, uint8_t width, uint8_t height,
 //! @return	Returns false on any error/invalid input.
 bool Text_FillMemoryBox(uint8_t x, uint8_t y, uint8_t width, uint8_t height, bool for_attr, uint8_t the_fill)
 {
-	uint8_t		max_row;
-
-	// set up initial loc
-	Text_SetXY(x,y);
-
-	// LOGIC: 
-	//   On F256-classic, the write locs are same for char and attr memory, difference is IO page 2 or 3
-	//   On F256-extended, the write locs are different for char and attr memory, as E loads use flat memory map
-
-	if (for_attr)
-	{
-		Sys_SwapIOPage(VICKY_IO_PAGE_ATTR_MEM);
-	}
-	else
-	{
-		Sys_SwapIOPage(VICKY_IO_PAGE_CHAR_MEM);
-	}
-
-	max_row = (y + height) - 1; // we are passing '1' for a single h row
-	
-	for (; y <= max_row; y++)
-	{
-		memset(zp_vram_ptr, the_fill, width);
-		zp_vram_ptr += SCREEN_NUM_COLS;
-	}
-		
-	Sys_RestoreIOPage();
-		
-	// reset current vram loc to match x,y
-	Text_SetXY(x,y);		
-			
-	return true;
+    uint8_t row;
+    uint8_t old_io = R8(MMU_IO_CTRL);
+    if (!width || !height || x >= SCREEN_NUM_COLS || y >= SCREEN_NUM_ROWS ||
+        width > SCREEN_NUM_COLS - x || height > SCREEN_NUM_ROWS - y) return false;
+    Text_SetXY(x, y);
+    for (row = 0; row < height; ++row) {
+        R8(MMU_IO_CTRL) = for_attr ? VICKY_IO_PAGE_ATTR_MEM : VICKY_IO_PAGE_CHAR_MEM;
+        memset(zp_vram_ptr, the_fill, width);
+        zp_vram_ptr += SCREEN_NUM_COLS;
+    }
+    Text_SetXY(x, y);
+    R8(MMU_IO_CTRL) = old_io;
+    return true;
 }
 
 
@@ -257,12 +226,12 @@ bool Text_FillMemoryBox(uint8_t x, uint8_t y, uint8_t width, uint8_t height, boo
 
 
 // //! Copies characters and attributes from the left, to the right, for the passed length, backfilling with the char and attr passed
-// //!   Shift never extends beyond the current row of text. 
-// //! @param	working_buffer - valid pointer to a block of memory at least SCREEN_NUM_COLS in size, to act as a temporary line buffer for the operation. 
+// //!   Shift never extends beyond the current row of text.
+// //! @param	working_buffer - valid pointer to a block of memory at least SCREEN_NUM_COLS in size, to act as a temporary line buffer for the operation.
 // //! @param	x - the starting horizontal position, between 0 and the screen's text_cols_vis_ - 1
 // //! @param	y - the starting vertical position, between 0 and the screen's text_rows_vis_ - 1
 // //! @param	shift_count - the number of character positions text will be shifted. eg, '1' will shift everything to the right of x by 1 character.
-// //! @param	backfill_char - the character to place in the space freed up by copy. eg, if you shift 10 chars at positions 60-69 to 70-79, this char will be used to fill the slots from 60-69. 
+// //! @param	backfill_char - the character to place in the space freed up by copy. eg, if you shift 10 chars at positions 60-69 to 70-79, this char will be used to fill the slots from 60-69.
 // //! @param	backfill_fore_color - foreground color that will be applied to the space opened up by the copy
 // //! @param	backfill_back_color - background color that will be applied to the space opened up by the copy
 // //! @return	Returns false on any error/invalid input.
@@ -273,15 +242,15 @@ bool Text_FillMemoryBox(uint8_t x, uint8_t y, uint8_t width, uint8_t height, boo
 // 	int16_t			initial_offset;
 // 	uint8_t			the_length;
 // 	uint8_t			the_attribute_value;
-// 	
+//
 // 	// calculate attribute value from passed fore and back colors
 // 	// LOGIC: text mode only supports 16 colors. lower 4 bits are back, upper 4 bits are foreground
 // 	the_attribute_value = ((backfill_fore_color << 4) | backfill_back_color);
-// 
-// 	// LOGIC: 
-//	//   On F256-classic, the write locs are same for char and attr memory, difference is IO page 2 or 3
-//	//   On F256-extended, the write locs are different for char and attr memory, as E loads use flat memory map
-// 
+//
+// 	// LOGIC:
+//	//   On WILDBITS-classic, the write locs are same for char and attr memory, difference is IO page 2 or 3
+//	//   On WILDBITS-extended, the write locs are different for char and attr memory, as E loads use flat memory map
+//
 // 	// check for valid inputs to ensure we are only adjusting 1 valid line worth of text
 // 	if (y > SCREEN_LAST_ROW)
 // 	{
@@ -296,11 +265,11 @@ bool Text_FillMemoryBox(uint8_t x, uint8_t y, uint8_t width, uint8_t height, boo
 // 		// can't shift more right than the end of the row
 // 		shift_count = (SCREEN_LAST_COL - x) + 1;
 // 	}
-// 		
+//
 // 	// get initial read/write locs - copy from right most character, not left-most.
 // 	the_length = (SCREEN_NUM_COLS - x) - shift_count;	// if x=70, and want to shift 5 chars to right, len can't be 10, len must be 5 or we'll overwrite next line
 // 	initial_offset = (SCREEN_NUM_COLS * y) + x;
-// 
+//
 // 	// copy text
 // 	vram_from_loc = (uint8_t*)VICKY_TEXT_CHAR_RAM + initial_offset;
 // 	vram_to_loc = vram_from_loc + shift_count;
@@ -308,8 +277,8 @@ bool Text_FillMemoryBox(uint8_t x, uint8_t y, uint8_t width, uint8_t height, boo
 // 	memcpy(vram_to_loc, working_buffer, the_length);
 // 	// backfill text
 // 	memset(vram_from_loc, backfill_char, shift_count);
-// 
-// 	
+//
+//
 // 	// copy attr
 // 	vram_from_loc = (uint8_t*)VICKY_TEXT_ATTR_RAM + initial_offset;
 // 	vram_to_loc = vram_from_loc + shift_count;
@@ -317,17 +286,17 @@ bool Text_FillMemoryBox(uint8_t x, uint8_t y, uint8_t width, uint8_t height, boo
 // 	memcpy(vram_to_loc, working_buffer, the_length);
 // 	// backfill attr
 // 	memset(vram_from_loc, the_attribute_value, shift_count);
-// 	
+//
 // 	return true;
 // }
 
 
 // //! Copies characters and attributes from the right, to the left, for the passed length, backfilling with the char and attr passed
-// //!   Shift never extends beyond the current row of text. 
+// //!   Shift never extends beyond the current row of text.
 // //! @param	x - the starting horizontal position, between 0 and the screen's text_cols_vis_ - 1
 // //! @param	y - the starting vertical position, between 0 and the screen's text_rows_vis_ - 1
 // //! @param	shift_count - the number of character positions text will be shifted. eg, '1' will shift everything to the left of x by 1 character.
-// //! @param	backfill_char - the character to place in the space freed up by copy. eg, if you shift 10 chars at positions 70-79 to 60-69, this char will be used to fill the slots from 70-79. 
+// //! @param	backfill_char - the character to place in the space freed up by copy. eg, if you shift 10 chars at positions 70-79 to 60-69, this char will be used to fill the slots from 70-79.
 // //! @param	backfill_fore_color - foreground color that will be applied to the space opened up by the copy
 // //! @param	backfill_back_color - background color that will be applied to the space opened up by the copy
 // //! @return	Returns false on any error/invalid input.
@@ -338,14 +307,14 @@ bool Text_FillMemoryBox(uint8_t x, uint8_t y, uint8_t width, uint8_t height, boo
 // 	int16_t			initial_offset;
 // 	uint8_t			the_length;
 // 	uint8_t			the_attribute_value;
-// 
+//
 // 	// calculate attribute value from passed fore and back colors
 // 	// LOGIC: text mode only supports 16 colors. lower 4 bits are back, upper 4 bits are foreground
 // 	the_attribute_value = ((backfill_fore_color << 4) | backfill_back_color);
-// 
-// 	// LOGIC: 
-// 	//   On F256jr, the write len and write locs are same for char and attr memory, difference is IO page 2 or 3
-// 
+//
+// 	// LOGIC:
+// 	//   On Wildbits, the write len and write locs are same for char and attr memory, difference is IO page 2 or 3
+//
 // 	// check for valid inputs to ensure we are only adjusting 1 valid line worth of text
 // 	if (y > SCREEN_LAST_ROW)
 // 	{
@@ -360,19 +329,19 @@ bool Text_FillMemoryBox(uint8_t x, uint8_t y, uint8_t width, uint8_t height, boo
 // 		// can't shift more left than the start of the row
 // 		shift_count = x;
 // 	}
-// 		
+//
 // 	// get initial read/write locs
 // 	the_length = SCREEN_NUM_COLS - x;
 // 	initial_offset = (SCREEN_NUM_COLS * y) + x;
-// 
+//
 // 	// copy text
 // 	vram_from_loc = (uint8_t*)VICKY_TEXT_CHAR_RAM + initial_offset;
-// 	vram_to_loc = vram_from_loc - shift_count;	
+// 	vram_to_loc = vram_from_loc - shift_count;
 // 	memcpy(vram_to_loc, vram_from_loc, the_length);
 // 	// backfill text
 // 	vram_from_loc += (the_length - 1);
 // 	memset(vram_from_loc, backfill_char, shift_count);
-// 	
+//
 // 	// copy attr
 // 	vram_from_loc = (uint8_t*)VICKY_TEXT_ATTR_RAM + initial_offset;
 // 	vram_to_loc = vram_from_loc - shift_count;
@@ -380,7 +349,7 @@ bool Text_FillMemoryBox(uint8_t x, uint8_t y, uint8_t width, uint8_t height, boo
 // 	// backfill attr
 // 	vram_from_loc += (the_length - 1);
 // 	memset(vram_from_loc, the_attribute_value, shift_count);
-// 	
+//
 // 	return true;
 // }
 
@@ -397,11 +366,11 @@ bool Text_FillMemoryBox(uint8_t x, uint8_t y, uint8_t width, uint8_t height, boo
 // 	int16_t			initial_offset;
 // 	uint8_t			num_rows;
 // 	uint8_t			i;
-// 
-// 	// LOGIC: 
-// 	//   On F256-classic, the write locs are same for char and attr memory, difference is IO page 2 or 3
-// 	//   On F256-extended, the write locs are different for char and attr memory, as E loads use flat memory map
-// 
+//
+// 	// LOGIC:
+// 	//   On WILDBITS-classic, the write locs are same for char and attr memory, difference is IO page 2 or 3
+// 	//   On WILDBITS-extended, the write locs are different for char and attr memory, as E loads use flat memory map
+//
 // 	// adjust the x, y, x2, y2, so that we are never trying to copy out of the physical screen box
 // 	if (y1 < 1)
 // 	{
@@ -419,27 +388,27 @@ bool Text_FillMemoryBox(uint8_t x, uint8_t y, uint8_t width, uint8_t height, boo
 // 	{
 // 		y2 = SCREEN_LAST_ROW;
 // 	}
-// 		
+//
 // 	// get initial read/write locs
 // 	initial_offset = (SCREEN_NUM_COLS * y1);
 // 	num_rows = y2 - y1 + 1;
-// 
+//
 // 	vram_from_loc = (uint8_t*)SCREEN_TEXT_MEMORY_LOC + initial_offset;
 // 	vram_to_loc = vram_from_loc - SCREEN_NUM_COLS;
-// 	
+//
 // 	for (i = 0; i < num_rows; i++)
 // 	{
 // 		Sys_SwapIOPage(VICKY_IO_PAGE_CHAR_MEM);
 // 		memcpy(vram_to_loc, vram_from_loc, SCREEN_NUM_COLS);
 // 		Sys_SwapIOPage(VICKY_IO_PAGE_ATTR_MEM);
 // 		memcpy(vram_to_loc, vram_from_loc, SCREEN_NUM_COLS);
-// 		
+//
 // 		vram_to_loc = vram_from_loc;
 // 		vram_from_loc += SCREEN_NUM_COLS;
 // 	}
-// 		
+//
 // 	Sys_RestoreIOPage();
-// 
+//
 // 	return true;
 // }
 
@@ -456,10 +425,10 @@ bool Text_FillMemoryBox(uint8_t x, uint8_t y, uint8_t width, uint8_t height, boo
 // 	int16_t			initial_offset;
 // 	uint8_t			num_rows;
 // 	uint8_t			i;
-// 
-// 	// LOGIC: 
-// 	//   On F256jr, the write len and write locs are same for char and attr memory, difference is IO page 2 or 3
-// 
+//
+// 	// LOGIC:
+// 	//   On Wildbits, the write len and write locs are same for char and attr memory, difference is IO page 2 or 3
+//
 // 	// adjust the x, y, x2, y2, so that we are never trying to copy out of the physical screen box
 // 	if (y2 == SCREEN_LAST_ROW)
 // 	{
@@ -473,33 +442,33 @@ bool Text_FillMemoryBox(uint8_t x, uint8_t y, uint8_t width, uint8_t height, boo
 // 	{
 // 		y2 = y1; // ok to scroll 1 row, so this is compromise for bad data.
 // 	}
-// 		
+//
 // 	// get initial read/write locs
 // 	initial_offset = (SCREEN_NUM_COLS * y2);
 // 	num_rows = y2 - y1 + 1;
-// 
+//
 // 	vram_from_loc = (uint8_t*)VICKY_TEXT_CHAR_RAM + initial_offset;
 // 	vram_to_loc = vram_from_loc + SCREEN_NUM_COLS;
-// 	
+//
 // 	for (i = 0; i < num_rows; i++)
 // 	{
 // 		memcpy(vram_to_loc, vram_from_loc, SCREEN_NUM_COLS);
-// 		
+//
 // 		vram_to_loc = vram_from_loc;
 // 		vram_from_loc -= SCREEN_NUM_COLS;
 // 	}
-// 	
+//
 // 	vram_from_loc = (uint8_t*)VICKY_TEXT_ATTR_RAM + initial_offset;
 // 	vram_to_loc = vram_from_loc + SCREEN_NUM_COLS;
-// 
+//
 // 	for (i = 0; i < num_rows; i++)
 // 	{
 // 		memcpy(vram_to_loc, vram_from_loc, SCREEN_NUM_COLS);
-// 		
+//
 // 		vram_to_loc = vram_from_loc;
 // 		vram_from_loc -= SCREEN_NUM_COLS;
 // 	}
-// 	
+//
 // 	return true;
 // }
 
@@ -507,9 +476,9 @@ bool Text_FillMemoryBox(uint8_t x, uint8_t y, uint8_t width, uint8_t height, boo
 #if defined DO_NOT_HIDE_ME_BRO
 
 //! Copy a linear run of text or attr to or from a linear memory buffer.
-//!   Use this if you do not have a full-sized (screen-size) off-screen buffer, and do not have a rectangular area 
-//!   of the screen to copy to/from, but instead want to copy a single linear stream to/from a particular cursor position. 
-//! @param	the_buffer - valid pointer to a block of memory to hold (or alternatively act as the source of) the character or attribute data for the specified screen memory. This will be read from first byte to last byte, without skipping. e.g., if you want to copy a 227 characters of text from the middle of the screen to this buffer, the buffer must be 227 bytes in length, and data will be written contiguously to it. 
+//!   Use this if you do not have a full-sized (screen-size) off-screen buffer, and do not have a rectangular area
+//!   of the screen to copy to/from, but instead want to copy a single linear stream to/from a particular cursor position.
+//! @param	the_buffer - valid pointer to a block of memory to hold (or alternatively act as the source of) the character or attribute data for the specified screen memory. This will be read from first byte to last byte, without skipping. e.g., if you want to copy a 227 characters of text from the middle of the screen to this buffer, the buffer must be 227 bytes in length, and data will be written contiguously to it.
 //! @param	x - the leftmost horizontal position, between 0 and the screen's text_cols_vis_ - 1
 //! @param	y - the uppermost vertical position, between 0 and the screen's text_rows_vis_ - 1
 //! @param	to_screen - true to copy to the screen from the buffer, false to copy from the screen to the buffer. Recommend using PARAM_COPY_TO_SCREEN/PARAM_COPY_FROM_SCREEN.
@@ -521,8 +490,8 @@ bool Text_CopyMemLinearBuffer(uint8_t* the_buffer, uint8_t x, uint8_t y, uint16_
 	uint8_t*	the_buffer_loc;
 	int16_t		initial_offset;
 
-	// LOGIC: 
-	//   On F256jr, the write len and write locs are same for char and attr memory, difference is IO page 2 or 3
+	// LOGIC:
+	//   On Wildbits, the write len and write locs are same for char and attr memory, difference is IO page 2 or 3
 
 	// adjust the x, y to ensure we have legitimate positions
 	if (x > SCREEN_LAST_COL)
@@ -533,20 +502,20 @@ bool Text_CopyMemLinearBuffer(uint8_t* the_buffer, uint8_t x, uint8_t y, uint16_
 	{
 		y = SCREEN_LAST_ROW;
 	}
-		
+
 	// get initial read/write locs
 	initial_offset = (SCREEN_NUM_COLS * y) + x;
-	
+
 	// prevent writing past end of screen memory
 	if (initial_offset + the_len > 2000)
 	{
 		the_len = 2000 - initial_offset;
 	}
-	
 
-	// LOGIC: 
-	//   On F256jr/k, the write locs are same for char and attr memory, difference is IO page 2 or 3
-	//   On F256k2, the write locs are different for char and attr memory, as k2 uses flat memory map
+
+	// LOGIC:
+	//   On Wildbits/k, the write locs are same for char and attr memory, difference is IO page 2 or 3
+	//   On WILDBITSk2, the write locs are different for char and attr memory, as k2 uses flat memory map
 
 	if (for_attr)
 	{
@@ -559,7 +528,7 @@ bool Text_CopyMemLinearBuffer(uint8_t* the_buffer, uint8_t x, uint8_t y, uint16_
 
 	the_buffer_loc = the_buffer;
 
-	// do copy one line at a time	
+	// do copy one line at a time
 
 //DEBUG_OUT(("%s %d: vramloc=%p, buffer=%p, bufferloc=%p, to_screen=%i, the_write_len=%i", the_vram_loc, the_buffer, the_buffer_loc, to_screen, the_write_len));
 
@@ -580,7 +549,7 @@ bool Text_CopyMemLinearBuffer(uint8_t* the_buffer, uint8_t x, uint8_t y, uint16_
 
 //! Copy a rectangular area of text or attr to or from a linear memory buffer.
 //!   Use this if you do not have a full-sized (screen-size) off-screen buffer, but instead have a block perhaps just big enough to hold the rect.
-//! @param	the_buffer - valid pointer to a block of memory to hold (or alternatively act as the source of) the character or attribute data for the specified rectangle of screen memory. This will be read from first byte to last byte, without skipping. e.g., if you want to copy a 40x5 rectangle of text from the middle of the screen to this buffer, the buffer must be 40*5=200 bytes in length, and data will be written contiguously to it. 
+//! @param	the_buffer - valid pointer to a block of memory to hold (or alternatively act as the source of) the character or attribute data for the specified rectangle of screen memory. This will be read from first byte to last byte, without skipping. e.g., if you want to copy a 40x5 rectangle of text from the middle of the screen to this buffer, the buffer must be 40*5=200 bytes in length, and data will be written contiguously to it.
 //! @param	x1 - the leftmost horizontal position, between 0 and the screen's text_cols_vis_ - 1
 //! @param	y1 - the uppermost vertical position, between 0 and the screen's text_rows_vis_ - 1
 //! @param	x2 - the rightmost horizontal position, between 0 and the screen's text_cols_vis_ - 1
@@ -624,9 +593,9 @@ bool Text_CopyMemBoxLinearBuffer(uint8_t* the_buffer, uint8_t x1, uint8_t y1, ui
 	orig_vram_loc = zp_vram_ptr;
 	Text_SetXY(x1,y1);
 
-	// LOGIC: 
-	//   On F256-classic, the write locs are same for char and attr memory, difference is IO page 2 or 3
-	//   On F256-extended, the write locs are different for char and attr memory, as E loads use flat memory map
+	// LOGIC:
+	//   On WILDBITS-classic, the write locs are same for char and attr memory, difference is IO page 2 or 3
+	//   On WILDBITS-extended, the write locs are different for char and attr memory, as E loads use flat memory map
 
 	if (for_attr)
 	{
@@ -636,11 +605,11 @@ bool Text_CopyMemBoxLinearBuffer(uint8_t* the_buffer, uint8_t x1, uint8_t y1, ui
 	{
 		Sys_SwapIOPage(VICKY_IO_PAGE_CHAR_MEM);
 	}
-		
+
 	the_buffer_loc = the_buffer;
 	the_write_len = x2 - x1 + 1;
-	
-	// do copy one line at a time	
+
+	// do copy one line at a time
 
 //DEBUG_OUT(("%s %d: vramloc=%p, buffer=%p, bufferloc=%p, to_screen=%i, the_write_len=%i", the_vram_loc, the_buffer, the_buffer_loc, to_screen, the_write_len));
 
@@ -658,7 +627,7 @@ bool Text_CopyMemBoxLinearBuffer(uint8_t* the_buffer, uint8_t x1, uint8_t y1, ui
 		the_buffer_loc += the_write_len;
 		zp_vram_ptr += SCREEN_NUM_COLS;
 	}
-		
+
 	Sys_RestoreIOPage();
 
 	// restore screen addr
@@ -686,8 +655,8 @@ bool Text_CopyMemBox(uint8_t* the_buffer, uint8_t x1, uint8_t y1, uint8_t x2, ui
 	uint8_t			the_write_len;
 	int16_t			initial_offset;
 
-	// LOGIC: 
-	//   On F256jr, the write len and write locs are same for char and attr memory, difference is IO page 2 or 3
+	// LOGIC:
+	//   On Wildbits, the write len and write locs are same for char and attr memory, difference is IO page 2 or 3
 
 	if (for_attr)
 	{
@@ -697,15 +666,15 @@ bool Text_CopyMemBox(uint8_t* the_buffer, uint8_t x1, uint8_t y1, uint8_t x2, ui
 	{
 		Sys_SwapIOPage(VICKY_IO_PAGE_CHAR_MEM);
 	}
-		
+
 	// get initial read/write locs
 	initial_offset = (SCREEN_NUM_COLS * y1) + x1;
 	the_buffer_loc = the_buffer + initial_offset;
 	the_write_len = x2 - x1 + 1;
 
 	the_vram_loc = (uint8_t*)SCREEN_TEXT_MEMORY_LOC + initial_offset;
-	
-	// do copy one line at a time	
+
+	// do copy one line at a time
 
 //DEBUG_OUT(("%s %d: vramloc=%p, buffer=%p, bufferloc=%p, to_screen=%i, the_write_len=%i", the_vram_loc, the_buffer, the_buffer_loc, to_screen, the_write_len));
 
@@ -719,11 +688,11 @@ bool Text_CopyMemBox(uint8_t* the_buffer, uint8_t x1, uint8_t y1, uint8_t x2, ui
 		{
 			memcpy(the_buffer_loc, the_vram_loc, the_write_len);
 		}
-		
+
 		the_buffer_loc += SCREEN_NUM_COLS;
 		the_vram_loc += SCREEN_NUM_COLS;
 	}
-		
+
 	Sys_RestoreIOPage();
 
 	return true;
@@ -791,18 +760,18 @@ bool Text_FillBox(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t the_ch
 // {
 // 	uint8_t		dy;
 // 	uint8_t		dx;
-// 	
+//
 // 	if (x1 > x2 || y1 > y2)
 // 	{
 // 		LOG_ERR(("%s %d: illegal coordinates", __func__, __LINE__));
 // 		return false;
 // 	}
-// 
+//
 //  	// add 1 to H line len, because dx becomes width, and if width = 0, then memset gets 0, and nothing happens.
 // 	// same for dy, as we account for that in the next function called
 // 	dx = x2 - x1 + 1;
 // 	dy = y2 - y1 + 1;
-// 
+//
 // 	return Text_FillMemoryBox(x1, y1, dx, dy, PARAM_FOR_TEXT_CHAR, the_char);
 // }
 
@@ -820,7 +789,7 @@ bool Text_FillBoxAttrOnly(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_
 	uint8_t			dy;
 	uint8_t			dx;
 	uint8_t			the_attribute_value;
-	
+
 	if (x1 > x2 || y1 > y2)
 	{
 		LOG_ERR(("%s %d: illegal coordinates", __func__, __LINE__));
@@ -856,37 +825,37 @@ bool Text_FillBoxAttrOnly(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_
 // 	uint8_t			back_nibble;
 // 	uint8_t			fore_nibble;
 // 	uint8_t*		the_write_loc;
-// 	
+//
 // 	// get initial read/write loc
 // 	Text_SetXY(x1,y1);
 // 	the_write_loc = zp_vram_ptr;
-// 	
+//
 // 	// amount of cells to skip past once we have written the specified line len
 // 	skip_len = SCREEN_NUM_COLS - (x2 - x1) - 1;
-// 
+//
 // 	Sys_SwapIOPage(VICKY_IO_PAGE_ATTR_MEM);
-// 	
+//
 // 	for (; y1 <= y2; y1++)
 // 	{
 // 		for (the_col = x1; the_col <= x2; the_col++)
 // 		{
 // 			the_attribute_value = R8(the_write_loc);
-// 			
+//
 // 			// LOGIC: text mode only supports 16 colors. lower 4 bits are back, upper 4 bits are foreground
 // 			back_nibble = ((the_attribute_value & 0xF0) >> 4);
 // 			fore_nibble = ((the_attribute_value & 0x0F) << 4);
 // 			the_inversed_value = (fore_nibble | back_nibble);
-// 			
+//
 // 			*the_write_loc++ = the_inversed_value;
 // 		}
-// 
+//
 // 		the_write_loc += skip_len;
 // 	}
-// 		
+//
 // 	Sys_RestoreIOPage();
-// 	
+//
 // 	// note: for this function, we will not update the next write VRAM address to the point after the lower right corner.
-// 
+//
 // 	return true;
 // }
 
@@ -903,22 +872,22 @@ bool Text_FillBoxAttrOnly(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_
 void Text_SetXY(uint8_t x, uint8_t y)
 {
 // 	uint16_t	initial_offset;
-// 	
+//
 // 	// LOGIC:
-// 	//   For plotting the VRAM, VICKY uses the full width, regardless of borders. 
-// 	//   So even if only 72 are showing, the screen is arranged from 0-71 for row 1, then 80-151 for row 2, etc. 
-// 	//   For F256K/JR non-flat memory loads, char ram and attr ram are at same address, and only difference is which I/O bank is being used
-// 	//   For F256K/JR/K2 with flat memory loads, char and ram are at different addresses
+// 	//   For plotting the VRAM, VICKY uses the full width, regardless of borders.
+// 	//   So even if only 72 are showing, the screen is arranged from 0-71 for row 1, then 80-151 for row 2, etc.
+// 	//   For WILDBITS_K/JR non-flat memory loads, char ram and attr ram are at same address, and only difference is which I/O bank is being used
+// 	//   For WILDBITS_K/JR/K2 with flat memory loads, char and ram are at different addresses
 // 	//   the file-scoped current x/y are always set when this function is called, regardless if for attr or char
-// 	//   the file-scoped current memory address is also always set, but only ever points to the char memory, not attr memory. 
-// 	
+// 	//   the file-scoped current memory address is also always set, but only ever points to the char memory, not attr memory.
+//
 // 	initial_offset = (SCREEN_NUM_COLS * y) + x;
-// 	
+//
 // 	// save the new current address, x, y position, and also tell VICKY where the cursor should be
 // 	zp_vram_ptr = (uint8_t*)SCREEN_TEXT_MEMORY_LOC + initial_offset;
 // 	zp_x = x;
 // 	zp_y = y;
-// 
+//
 // 	Sys_SwapIOPage(VICKY_IO_PAGE_REGISTERS);
 // 	R8(VICKY_TEXT_X_POS) = zp_x;
 // 	R8(VICKY_TEXT_Y_POS) = zp_y;
@@ -967,7 +936,7 @@ bool Text_SetCharAtXY(uint8_t x, uint8_t y, uint8_t the_char)
 {
 	Text_SetXY(x, y);
 	Text_SetChar(the_char);
-		
+
 	return true;
 }
 
@@ -983,7 +952,7 @@ bool Text_SetAttrAtXY(uint8_t x, uint8_t y, uint8_t the_attribute_value)
 {
 	Text_SetXY(x, y);
 	Text_SetAttr(the_attribute_value);
-		
+
 	return true;
 }
 
@@ -1024,8 +993,8 @@ bool Text_SetCharAndAttrAtXY(uint8_t x, uint8_t y, uint8_t the_char, uint8_t the
 {
 	uint8_t*		the_write_loc;
 
-	the_write_loc = Text_GetMemLocForXY(x, y);	
-	
+	the_write_loc = Text_GetMemLocForXY(x, y);
+
 	Sys_SwapIOPage(VICKY_IO_PAGE_ATTR_MEM);
 	*the_write_loc = the_attribute_value;
 	Sys_RestoreIOPage();
@@ -1036,7 +1005,7 @@ bool Text_SetCharAndAttrAtXY(uint8_t x, uint8_t y, uint8_t the_char, uint8_t the
 
 	zp_x = x;
 	zp_y = y;
-	
+
 	return true;
 }
 
@@ -1077,25 +1046,25 @@ void Text_DrawCharsAtXY(uint8_t x, uint8_t y, uint8_t* the_buffer, uint16_t the_
 // 	Sys_SwapIOPage(VICKY_IO_PAGE_CHAR_MEM);
 // 	*zp_vram_ptr = the_char;
 // 	Sys_RestoreIOPage();
-// 
+//
 // 	zp_vram_ptr++;
 // 	zp_x++;
-// 	
+//
 // 	// bounds check. would be nicer to JSR to this but that's expensive in C, so just copying this everywhere...
-// 	
+//
 // 	Sys_SwapIOPage(VICKY_IO_PAGE_REGISTERS);
-// 
+//
 // 	if (zp_x > SCREEN_LAST_COL && zp_y < SCREEN_LAST_ROW)
 // 	{
 // 		zp_x = 0;
 // 		zp_y++;
 // 		R8(VICKY_TEXT_Y_POS) = zp_y;
 // 	}
-// 	
+//
 // 	R8(VICKY_TEXT_X_POS) = zp_x;
-// 
+//
 // 	Sys_RestoreIOPage();
-// 		
+//
 // 	return true;
 // }
 
@@ -1111,7 +1080,7 @@ bool Text_SetAttr(uint8_t the_attribute_value)
 
 	zp_vram_ptr++;
 	zp_x++;
-	
+
 	Sys_SwapIOPage(VICKY_IO_PAGE_REGISTERS);
 
 	// bounds check. would be nicer to JSR to this but that's expensive in C, so just copying this everywhere...
@@ -1121,11 +1090,11 @@ bool Text_SetAttr(uint8_t the_attribute_value)
 		zp_y++;
 		R8(VICKY_TEXT_Y_POS) = zp_y;
 	}
-	
+
 	R8(VICKY_TEXT_X_POS) = zp_x;
 
 	Sys_RestoreIOPage();
-	
+
 	return true;
 }
 
@@ -1158,7 +1127,7 @@ bool Text_SetColor(uint8_t fore_color, uint8_t back_color)
 bool Text_SetCharAndColor(uint8_t the_char, uint8_t fore_color, uint8_t back_color)
 {
 	uint8_t			the_attribute_value;
-			
+
 	// calculate attribute value from passed fore and back colors
 	// LOGIC: text mode only supports 16 colors. lower 4 bits are back, upper 4 bits are foreground
 	the_attribute_value = ((fore_color << 4) | back_color);
@@ -1173,9 +1142,9 @@ bool Text_SetCharAndColor(uint8_t the_char, uint8_t fore_color, uint8_t back_col
 
 	zp_vram_ptr++;
 	zp_x++;
-	
+
 	// bounds check. would be nicer to JSR to this but that's expensive in C, so just copying this everywhere...
-	
+
 	Sys_SwapIOPage(VICKY_IO_PAGE_REGISTERS);
 
 	if (zp_x > SCREEN_LAST_COL && zp_y < SCREEN_LAST_ROW)
@@ -1184,11 +1153,11 @@ bool Text_SetCharAndColor(uint8_t the_char, uint8_t fore_color, uint8_t back_col
 		zp_y++;
 		R8(VICKY_TEXT_Y_POS) = zp_y;
 	}
-	
+
 	R8(VICKY_TEXT_X_POS) = zp_x;
 
 	Sys_RestoreIOPage();
-	
+
 	return true;
 }
 
@@ -1200,16 +1169,16 @@ bool Text_SetCharAndColor(uint8_t the_char, uint8_t fore_color, uint8_t back_col
 // 	Sys_SwapIOPage(VICKY_IO_PAGE_CHAR_MEM);
 // 	memcpy(zp_vram_ptr, the_buffer, the_len);
 // 	Sys_RestoreIOPage();
-// 
+//
 // 	zp_y = zp_y + (uint8_t)(the_len / SCREEN_NUM_COLS);
 // 	zp_x = zp_x + (uint8_t)(the_len - ((the_len / SCREEN_NUM_COLS) * SCREEN_NUM_COLS));
 // 	zp_vram_ptr += the_len;
-// 	
+//
 // 	Sys_SwapIOPage(VICKY_IO_PAGE_REGISTERS);
 // 	R8(VICKY_TEXT_X_POS) = zp_x;
 // 	R8(VICKY_TEXT_Y_POS) = zp_y;
 // 	Sys_RestoreIOPage();
-// 
+//
 // 	return true;
 // }
 
@@ -1237,7 +1206,7 @@ bool Text_UpdateFontData(char* new_font_data, bool for_primary_font)
 	{
 		memcpy((uint8_t*)FONT_MEMORY_BANK1, new_font_data, 2048);
 	}
-		
+
 	Sys_RestoreIOPage();
 
 	return true;
@@ -1258,11 +1227,11 @@ bool Text_UpdateFontData(char* new_font_data, bool for_primary_font)
 uint8_t Text_GetChar(void)
 {
 	uint8_t		the_value;
-	
+
 	Sys_SwapIOPage(VICKY_IO_PAGE_CHAR_MEM);
 	the_value = *zp_vram_ptr;
 	Sys_RestoreIOPage();
-	
+
 	return the_value;
 }
 
@@ -1276,11 +1245,11 @@ uint8_t Text_GetChar(void)
 uint8_t Text_GetPrevChar(void)
 {
 	uint8_t		the_value;
-	
+
 	Sys_SwapIOPage(VICKY_IO_PAGE_CHAR_MEM);
 	the_value = *(zp_vram_ptr - 1);
 	Sys_RestoreIOPage();
-	
+
 	return the_value;
 }
 
@@ -1294,11 +1263,11 @@ uint8_t Text_GetPrevChar(void)
 uint8_t Text_GetNextChar(void)
 {
 	uint8_t		the_value;
-	
+
 	Sys_SwapIOPage(VICKY_IO_PAGE_CHAR_MEM);
 	the_value =  *(zp_vram_ptr + 1);
 	Sys_RestoreIOPage();
-	
+
 	return the_value;
 }
 
@@ -1316,13 +1285,13 @@ uint8_t Text_GetCharAtXY(uint8_t x, uint8_t y)
 	uint8_t	tempx;
 	uint8_t	tempy;
 	uint8_t	the_char;
-	
+
 	// LOGIC:
 	//   stash previous x, y so we can restore it afterwards. we don't want GET functions to change current x,y info.
-	
+
 	tempx = zp_x;
 	tempy = zp_y;
-	
+
 	Text_SetXY(x, y);
 
 	Sys_SwapIOPage(VICKY_IO_PAGE_CHAR_MEM);
@@ -1353,10 +1322,10 @@ uint8_t Text_GetCharAtXY(uint8_t x, uint8_t y)
 void Text_DrawHLine(uint8_t x, uint8_t y, uint8_t the_line_len, uint8_t the_char, uint8_t fore_color, uint8_t back_color, uint8_t the_draw_choice)
 {
 	uint8_t			the_attribute_value;
-	
-	// LOGIC: 
-	//   an H line is just a box with 1 row, so we can re-use Text_FillMemoryBox(Both)(). These routines use memset, so are quicker than for loops. 
-	
+
+	// LOGIC:
+	//   an H line is just a box with 1 row, so we can re-use Text_FillMemoryBox(Both)(). These routines use memset, so are quicker than for loops.
+
 	if (the_draw_choice == CHAR_ONLY)
 	{
 		Text_FillMemoryBox(x, y, the_line_len, 1, PARAM_FOR_TEXT_CHAR, the_char);
@@ -1367,7 +1336,7 @@ void Text_DrawHLine(uint8_t x, uint8_t y, uint8_t the_line_len, uint8_t the_char
 		// LOGIC: text mode only supports 16 colors. lower 4 bits are back, upper 4 bits are foreground
 
 		the_attribute_value = ((fore_color << 4) | back_color);
-	
+
 		if (the_draw_choice == ATTR_ONLY)
 		{
 			Text_FillMemoryBox(x, y, the_line_len, 1, PARAM_FOR_TEXT_ATTR, the_attribute_value);
@@ -1391,7 +1360,7 @@ void Text_DrawHLine(uint8_t x, uint8_t y, uint8_t the_line_len, uint8_t the_char
 void Text_DrawVLine(uint8_t x, uint8_t y, uint8_t the_line_len, uint8_t the_char, uint8_t fore_color, uint8_t back_color, uint8_t the_draw_choice)
 {
 	uint8_t		dy;
-	
+
 	switch (the_draw_choice)
 	{
 		case CHAR_ONLY:
@@ -1400,21 +1369,21 @@ void Text_DrawVLine(uint8_t x, uint8_t y, uint8_t the_line_len, uint8_t the_char
 				Text_SetCharAtXY(x, y + dy, the_char);
 			}
 			break;
-			
+
 		case ATTR_ONLY:
 			for (dy = 0; dy < the_line_len; dy++)
 			{
 				Text_SetColorAtXY(x, y + dy, fore_color, back_color);
 			}
 			break;
-			
+
 		case CHAR_AND_ATTR:
 		default:
 			for (dy = 0; dy < the_line_len; dy++)
 			{
-				Text_SetCharAndColorAtXY(x, y + dy, the_char, fore_color, back_color);		
+				Text_SetCharAndColorAtXY(x, y + dy, the_char, fore_color, back_color);
 			}
-			break;			
+			break;
 	}
 }
 
@@ -1430,33 +1399,33 @@ void Text_DrawBoxCoordsFancy(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uin
 {
 	uint8_t		dy;
 	uint8_t		dx;
-	
+
 	//DEBUG_OUT(("%s %d: %u, %u x %u, %u", __func__, __LINE__, x1, y1, x2, y2));
-	
+
 // 	// add 1 to H line len, because dx becomes width, and if width = 0, then memset gets 0, and nothing happens.
 	// dy can be 0 and you still get at least one row done.
-	// but, for this, because of how we draw H line, do NOT add 1 to x1. see "x1+1" below... 
+	// but, for this, because of how we draw H line, do NOT add 1 to x1. see "x1+1" below...
 	dx = x2 - x1 + 0;
 	dy = y2 - y1 + 0;
-	
+
 	// draw all lines one char shorter on each end so that we don't overdraw when we do corners
-	
+
 	Text_DrawHLine(x1+1, y1, dx, SC_HLINE, fore_color, back_color, CHAR_AND_ATTR);
 	Text_DrawHLine(x1+1, y2, dx, SC_HLINE, fore_color, back_color, CHAR_AND_ATTR);
 	Text_DrawVLine(x2, y1+1, dy, SC_VLINE, fore_color, back_color, CHAR_AND_ATTR);
 	Text_DrawVLine(x1, y1+1, dy, SC_VLINE, fore_color, back_color, CHAR_AND_ATTR);
-	
+
 	// draw the 4 corners with dedicated corner pieces
-	Text_SetCharAndColorAtXY(x1, y1, SC_ULCORNER, fore_color, back_color);		
-	Text_SetCharAndColorAtXY(x2, y1, SC_URCORNER, fore_color, back_color);		
-	Text_SetCharAndColorAtXY(x2, y2, SC_LRCORNER, fore_color, back_color);		
-	Text_SetCharAndColorAtXY(x1, y2, SC_LLCORNER, fore_color, back_color);		
+	Text_SetCharAndColorAtXY(x1, y1, SC_ULCORNER, fore_color, back_color);
+	Text_SetCharAndColorAtXY(x2, y1, SC_URCORNER, fore_color, back_color);
+	Text_SetCharAndColorAtXY(x2, y2, SC_LRCORNER, fore_color, back_color);
+	Text_SetCharAndColorAtXY(x1, y2, SC_LLCORNER, fore_color, back_color);
 
 	// move cursor one past bottom,right corner of box
 	zp_x++;
-	
+
 	// bounds check. would be nicer to JSR to this but that's expensive in C, so just copying this everywhere...
-	
+
 	Sys_SwapIOPage(VICKY_IO_PAGE_REGISTERS);
 
 	if (zp_x > SCREEN_LAST_COL && zp_y < SCREEN_LAST_ROW)
@@ -1465,7 +1434,7 @@ void Text_DrawBoxCoordsFancy(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uin
 		zp_y++;
 		R8(VICKY_TEXT_Y_POS) = zp_y;
 	}
-	
+
 	R8(VICKY_TEXT_X_POS) = zp_x;
 
 	Sys_RestoreIOPage();
@@ -1478,7 +1447,7 @@ void Text_DrawBoxCoordsFancy(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uin
 
 //! Draw a string at a specified x, y coord, also setting the color attributes.
 //! If it is too long to display on the line it started, it will be truncated at the right edge of the screen.
-//! No word wrap is performed. 
+//! No word wrap is performed.
 //! @param	x - the starting horizontal position, between 0 and the screen's text_cols_vis_ - 1
 //! @param	y - the starting vertical position, between 0 and the screen's text_rows_vis_ - 1
 //! @param	the_string - the null-terminated string to be drawn
@@ -1496,7 +1465,7 @@ bool Text_DrawStringAtXY(uint8_t x, uint8_t y, char* the_string, uint8_t fore_co
 
 //! Draw a string at the current X/Y position, also setting the color attributes.
 //! If it is too long to display on the line it started, it will be truncated at the right edge of the screen.
-//! No word wrap is performed. 
+//! No word wrap is performed.
 //! @param	the_string - the null-terminated string to be drawn
 //! @param	fore_color - Index to the desired foreground color (0-15). The predefined macro constants may be used (COLOR_DK_RED, etc.), but be aware that the colors are not fixed, and may not correspond to the names if the LUT in RAM has been modified.
 //! @param	back_color - Index to the desired background color (0-15). The predefined macro constants may be used (COLOR_DK_RED, etc.), but be aware that the colors are not fixed, and may not correspond to the names if the LUT in RAM has been modified.
@@ -1506,38 +1475,42 @@ bool Text_DrawString(char* the_string, uint8_t fore_color, uint8_t back_color)
 	uint8_t			the_attribute_value;
 	uint8_t			max_col;
 	uint8_t			the_len;
-	
+
 	// calculate attribute value from passed fore and back colors
 	// LOGIC: text mode only supports 16 colors. lower 4 bits are back, upper 4 bits are foreground
 	the_attribute_value = ((fore_color << 4) | back_color);
-	
-	the_len = (uint8_t)strlen(the_string); // can't be wider than the screen anyway
+
+	if (!the_string || zp_x >= SCREEN_NUM_COLS || zp_y >= SCREEN_NUM_ROWS) return false;
+    the_len = General_Strnlen(the_string, SCREEN_NUM_COLS - zp_x); // can't be wider than the screen anyway
 	max_col = SCREEN_NUM_COLS - 1;
-	
+
 	if (zp_x + the_len > max_col)
 	{
 		the_len = (max_col - zp_x) + 1;
 	}
-	
+
 	//DEBUG_OUT(("%s %d: draw_len=%i, max_col=%i, x=%i", __func__, __LINE__, draw_len, max_col, x));
 	//printf("%s %d: draw_len=%i, max_col=%i, x=%i \n", __func__, __LINE__, draw_len, max_col, x);
 
 	//printf("%s %d: the_char_loc=%p, *charloc=%u \n", __func__, __LINE__, the_char_loc, *the_char_loc);
 	//printf("%s %d: string=%s \n", __func__, __LINE__, the_string);
-	
+
 	// draw the string
 	Sys_SwapIOPage(VICKY_IO_PAGE_CHAR_MEM);
 	memcpy(zp_vram_ptr, the_string, the_len);
 	Sys_RestoreIOPage();
-	
+
 	// draw the attributes
 	Sys_SwapIOPage(VICKY_IO_PAGE_ATTR_MEM);
 	memset(zp_vram_ptr, the_attribute_value, the_len);
 	Sys_RestoreIOPage();
 
 	// set x,y to end of string+1
-	Text_SetXY(zp_x + (the_len - ((the_len / SCREEN_NUM_COLS) * SCREEN_NUM_COLS)), zp_y + (the_len / SCREEN_NUM_COLS));
-	
+    if (zp_x + the_len >= SCREEN_NUM_COLS) {
+        if (zp_y < SCREEN_LAST_ROW) Text_SetXY(0, zp_y + 1);
+        else Text_SetXY(SCREEN_LAST_COL, SCREEN_LAST_ROW);
+    } else Text_SetXY(zp_x + the_len, zp_y);
+
 	return true;
 }
 
@@ -1549,7 +1522,7 @@ bool Text_DrawString(char* the_string, uint8_t fore_color, uint8_t back_color)
 
 // general function for drawing a "window"-like text object using draw chars
 // can supply a title, and specify if it should optionally draw another row under the title
-// can supply background color, line color, and text color. 
+// can supply background color, line color, and text color.
 // can say if you want background cleared
 // can pass a pointer to a buffer where the text/color under the window will be saved before drawing (for easy restore later)
 //! @param	accent_color - Index to the desired accent color (0-15). Window frame, etc.
@@ -1566,7 +1539,7 @@ bool Text_DrawWindow(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t acc
 		Text_CopyMemBoxLinearBuffer((uint8_t*)char_save_mem, x1, y1, x2, y2, PARAM_COPY_FROM_SCREEN, PARAM_FOR_TEXT_CHAR);
 		Text_CopyMemBoxLinearBuffer((uint8_t*)attr_save_mem, x1, y1, x2, y2, PARAM_COPY_FROM_SCREEN, PARAM_FOR_TEXT_ATTR);
 	}
-	
+
 	// optionally clear the background text and chars
 	if (clear_first)
 	{
@@ -1575,10 +1548,10 @@ bool Text_DrawWindow(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t acc
 			return false;
 		}
 	}
-	
+
 	// draw the overall box
 	Text_DrawBoxCoordsFancy(x1, y1, x2, y2, accent_color, back_color);
-	
+
 	// optionally enclose the header text by drawing a line under it, and making |- and -| chars line up
 	if (enclose_header)
 	{
@@ -1586,15 +1559,15 @@ bool Text_DrawWindow(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t acc
 
 		Text_DrawHLine(x1 + 1, y1 + 2, num_cols - 2, SC_HLINE, accent_color, back_color, CHAR_AND_ATTR);
 		Text_SetCharAtXY(x1, y1 + 2, SC_T_RIGHT);
-		Text_SetCharAtXY(x2, y1 + 2, SC_T_LEFT);		
+		Text_SetCharAtXY(x2, y1 + 2, SC_T_LEFT);
 	}
-	
+
 	// optionally draw header text
 	if (the_header_text != NULL)
 	{
 		Text_DrawStringAtXY(x1 + 1, y1 + 1, the_header_text, fore_color, back_color);
 	}
-	
+
 	return true;
 }
 
@@ -1624,84 +1597,84 @@ int8_t Text_DisplayDialog(TextDialogTemplate* the_dialog_template, char* char_sa
 	uint8_t			y2 = y1 + the_dialog_template->height_;
 	int8_t			the_result = DIALOG_ERROR;
 	int8_t			i;
-	
+
 	// ** Validity checks
-	
+
 	// this function requires at least one button, or there will be no way to dismiss it
-	if (the_dialog_template->num_buttons_ < 1)
+	if (the_dialog_template->num_buttons_ < 1 || the_dialog_template->num_buttons_ > 3)
 	{
 		return the_result;
 	}
-	
+
 	// this function requires both header text and body text
 	if (the_dialog_template->title_text_ == NULL || the_dialog_template->body_text_ == NULL)
 	{
 		return the_result;
 	}
-	
+
 	avail_width = the_dialog_template->width_ - 2; // account for draw characters on edges
-	
+
 	// available (body) height is defined by by the space under the enclosed header (-3), and over the buttons (-4)
 	//   bottom row takes 1, buttons take 1, and there is one row of padding above and below the buttons
 // 	avail_height = the_dialog_template->height_ - 7;
-	
+
 	for (i = 0; i < the_dialog_template->num_buttons_; i++)
 	{
 		if (the_dialog_template->btn_label_[i] == NULL)
 		{
 			return the_result;
 		}
-		
+
 		btn_width[i] = (uint8_t)General_Strnlen(the_dialog_template->btn_label_[i], TEXT_DIALOG_MAX_BTN_LABEL_LEN) + 2; // +2 because we force 2 spaces to right of all buttons
 		total_btn_width += btn_width[i];
 	}
-	
+
 	if (total_btn_width > avail_width)
 	{
 		return the_result;
 	}
-	
-	
+
+
 	// ** create the window itself, with its title
-	
+
 	// LOGIC:
 	//   this is hard coded to use a specific color combination
 	//   hardcoded also to always enclose the title in lines, and to clear the background first
-	if (Text_DrawWindow( 
-		x1, y1, 
+	if (Text_DrawWindow(
+		x1, y1,
 		x2, y2,
-		accent_color, fore_color, back_color, 
-		the_dialog_template->title_text_, 
-		char_save_mem, attr_save_mem, 
-		PARAM_CLEAR_FIRST, 
+		accent_color, fore_color, back_color,
+		the_dialog_template->title_text_,
+		char_save_mem, attr_save_mem,
+		PARAM_CLEAR_FIRST,
 		PARAM_ENCLOSE_HEADER
 		) == false)
 	{
 		return the_result;
 	}
-	
-	// ** draw the body text -- F256 f/manager version: not spending memory on text wrapping, so only 1 line of text supported!
+
+	// ** draw the body text -- WILDBITS Wildbits File Manager version: not spending memory on text wrapping, so only 1 line of text supported!
 	Text_DrawStringAtXY(
-		the_dialog_template->x_ + 1, the_dialog_template->y_ + 3, 
+		the_dialog_template->x_ + 1, the_dialog_template->y_ + 3,
 		the_dialog_template->body_text_,
 		fore_color, back_color
-	);	
-	
+	);
+
 	// ** draw the buttons
 	// go backwards from 3rd button (rightmost) to first button (leftmost)
 	// build in 1 space to right of each button
 	// if affirmative, draw in green. if non-affirmative, draw in red
-	
+
 	btn_y = y2 - 2; // -2: 1 for bottom line char, 1 for a spacer below button
 	btn_x = x2 - 0; // -1: account for right line char, but space is built into button width -> set to 0 to get right results.
 	i = the_dialog_template->num_buttons_ - 1;
-	
+
 	for (; i >= 0; i--)
 	{
 		uint8_t	btn_color;
 
 		btn_x -= btn_width[i];
-		
+
 		if (the_dialog_template->default_button_id_ == i)
 		{
 			btn_color = affirm_color;
@@ -1710,21 +1683,21 @@ int8_t Text_DisplayDialog(TextDialogTemplate* the_dialog_template, char* char_sa
 		{
 			btn_color = cancel_color;
 		}
-		
+
 		Text_DrawStringAtXY(btn_x, btn_y, the_dialog_template->btn_label_[i], btn_color, back_color);
 	}
 
 	// **get player input
-	
+
 	do
 	{
 		player_input = Keyboard_GetChar();
-		
+
 		if (player_input == CH_ESC || player_input == CH_RUNSTOP)
 		{
 			break;
 		}
-		
+
 		for (i = 0; i < the_dialog_template->num_buttons_; i++)
 		{
 			if (the_dialog_template->btn_shortcut_[i] == player_input)
@@ -1738,7 +1711,7 @@ int8_t Text_DisplayDialog(TextDialogTemplate* the_dialog_template, char* char_sa
 				break;
 			}
 		}
-		
+
 		// maybe it was the cancel shortcut instead?
 		if (the_result == DIALOG_ERROR && player_input == the_dialog_template->cancel_button_shortcut_)
 		{
@@ -1749,17 +1722,17 @@ int8_t Text_DisplayDialog(TextDialogTemplate* the_dialog_template, char* char_sa
 
 	// restore whatever had been under the text window
 	// copy from storage
-	Text_CopyMemBoxLinearBuffer((uint8_t*)char_save_mem, 
-		x1, y1, 
-		x2, y2, 
+	Text_CopyMemBoxLinearBuffer((uint8_t*)char_save_mem,
+		x1, y1,
+		x2, y2,
 		PARAM_COPY_TO_SCREEN, PARAM_FOR_TEXT_CHAR
 	);
-	Text_CopyMemBoxLinearBuffer((uint8_t*)attr_save_mem, 
-		x1, y1, 
-		x2, y2, 
+	Text_CopyMemBoxLinearBuffer((uint8_t*)attr_save_mem,
+		x1, y1,
+		x2, y2,
 		PARAM_COPY_TO_SCREEN, PARAM_FOR_TEXT_ATTR
 	);
-	
+
 	return the_result;
 }
 
@@ -1782,52 +1755,52 @@ int8_t Text_DisplayTextEntryDialog(TextDialogTemplate* the_dialog_template, char
 	uint8_t			x2 = x1 + the_dialog_template->width_;
 	uint8_t			y2 = y1 + the_dialog_template->height_;
 	int8_t			the_result = false;
-	
+
 	// ** Validity checks
-	
+
 	// this function requires both header text and body text
 	if (the_dialog_template->title_text_ == NULL || the_dialog_template->body_text_ == NULL)
 	{
 		return the_result;
 	}
-	
+
 	avail_width = the_dialog_template->width_ - 2; // account for draw characters on edges
-	
+
 	// available (body) height is defined by by the space under the enclosed header (-3), and over the buttons (-4)
 	//   bottom row takes 1, buttons take 1, and there is one row of padding above and below the buttons
 // 	avail_height = the_dialog_template->height_ - 7;
-	
+
 	if (the_max_length > avail_width)
 	{
 		return the_result;
 	}
-	
-	
+
+
 	// ** create the window itself, with its title
-	
+
 	// LOGIC:
 	//   this is hard coded to use a specific color combination
 	//   hardcoded also to always enclose the title in lines, and to clear the background first
-	if (Text_DrawWindow( 
-		x1, y1, 
+	if (Text_DrawWindow(
+		x1, y1,
 		x2, y2,
-		accent_color, fore_color, back_color, 
-		the_dialog_template->title_text_, 
-		char_save_mem, attr_save_mem, 
-		PARAM_CLEAR_FIRST, 
+		accent_color, fore_color, back_color,
+		the_dialog_template->title_text_,
+		char_save_mem, attr_save_mem,
+		PARAM_CLEAR_FIRST,
 		PARAM_ENCLOSE_HEADER
 		) == false)
 	{
 		return the_result;
 	}
-	
-	// ** draw the body text -- F256 f/manager version: not spending memory on text wrapping, so only 1 line of text supported!
+
+	// ** draw the body text -- WILDBITS Wildbits File Manager version: not spending memory on text wrapping, so only 1 line of text supported!
 	Text_DrawStringAtXY(
-		the_dialog_template->x_ + 1, the_dialog_template->y_ + 3, 
+		the_dialog_template->x_ + 1, the_dialog_template->y_ + 3,
 		the_dialog_template->body_text_,
 		fore_color, back_color
-	);	
-	
+	);
+
 	input_y = y2 - 2; // -2: 1 for bottom line char, 1 for a spacer below button
 	input_x = x1 + 1; // +1: get past box char
 
@@ -1836,17 +1809,17 @@ int8_t Text_DisplayTextEntryDialog(TextDialogTemplate* the_dialog_template, char
 
 	// restore whatever had been under the text window
 	// copy from storage
-	Text_CopyMemBoxLinearBuffer((uint8_t*)char_save_mem, 
-		x1, y1, 
-		x2, y2, 
+	Text_CopyMemBoxLinearBuffer((uint8_t*)char_save_mem,
+		x1, y1,
+		x2, y2,
 		PARAM_COPY_TO_SCREEN, PARAM_FOR_TEXT_CHAR
 	);
-	Text_CopyMemBoxLinearBuffer((uint8_t*)attr_save_mem, 
-		x1, y1, 
-		x2, y2, 
+	Text_CopyMemBoxLinearBuffer((uint8_t*)attr_save_mem,
+		x1, y1,
+		x2, y2,
 		PARAM_COPY_TO_SCREEN, PARAM_FOR_TEXT_ATTR
 	);
-	
+
 	return the_result;
 }
 
@@ -1863,275 +1836,40 @@ int8_t Text_DisplayTextEntryDialog(TextDialogTemplate* the_dialog_template, char
 // returns false if no string built.
 bool Text_GetStringFromUser(char* the_buffer, int8_t the_max_length, uint8_t start_x, uint8_t start_y, bool overwrite_mode)
 {
-	char*		the_user_input = the_buffer;
-	int8_t		x = start_x;
-	int8_t		characters_remaining;
-	int8_t		curr_pos;	// the cursor position within the string
-	uint8_t		curr_len;	// the current length of the string
-	int8_t		i;
-	uint8_t		the_char;
-	uint8_t		fore_text = COLOR_BRIGHT_WHITE;
-	uint8_t		background = COLOR_BLACK;
-	
-	//DEBUG_OUT(("%s %d: entered; the_max_length=%i", __func__, __LINE__, the_max_length));
-
-	Text_FillBox(
-		start_x, start_y,
-		start_x + the_max_length, start_y, 
-		CH_SPACE, fore_text, background
-	);
-
-	// return false if the_max_length is so small we can't make a string
-	if (the_max_length < 1)
-	{
-		return false;
-	}
-
-	if (the_max_length == 1)
-	{
-		the_user_input[0] = '\0';
-		return false;
-	}
-
-	characters_remaining = the_max_length;
-	curr_pos = 0;
-	
-	// if the passed buffer is not empty, write it out so users can edit. typical use case: rename a file. 
-	curr_len = (uint8_t)General_Strnlen(the_buffer, the_max_length);
-	
-	if (curr_len > 0 && curr_len < the_max_length)
-	{
-		Text_DrawStringAtXY(x, start_y, the_buffer, fore_text, background);
-		x += curr_len;
-		characters_remaining -= curr_len;
-		the_user_input += curr_len;
-		curr_pos = curr_len; // ie, 1 past the end of the string
-	}
-	
-	Text_SetXY(x, start_y);
-
-	// have cursor blink while here
-	Sys_EnableTextModeCursor(true);
-
-	while ( (the_char = Keyboard_GetChar() ) != CH_ENTER)
-	{
-		//DEBUG_OUT(("%s %d: input=%x ('%c')", __func__, __LINE__, the_char, the_char));
-		
-		if (the_char == CH_ESC)
-		{
-			// ESC = same as typing nothing and hitting ENTER: cancel action
-			return false;
-		}
-		else if (the_char == CH_BKSP)
-		{
-			//if (the_user_input != original_string) // original string was starting point of name string, so this prevents us from trying to delete past start
-			if (curr_pos > 0) // prevents us from trying to delete past start
-			{
-				// if we are at end of string, turn cursor character to terminator.
-				// if not at end, shift all chars to left 1 spot
-				if (curr_pos < curr_len)
-				{
-					for (i = curr_pos - 1 ; i < curr_len; i++)
-					{
-						the_buffer[i] = the_buffer[i+1];
-					}
-					
-					the_buffer[i] = '\0';
-					Text_DrawStringAtXY(start_x, start_y, the_buffer, fore_text, background);
-					Text_SetChar(CH_SPACE); // erase the last char in the string
-				}
-				else
-				{
-					*the_user_input = '\0';
-					Text_SetCharAtXY(x-1, start_y, CH_SPACE);
-				}
-			
-				// do visuals
-				--x;
-				Text_SetXY(x, start_y);
-
-				--the_user_input;
-				--curr_pos;
-				
-				// we just went back in the string, so from the new point, we have more chars available
-				--curr_len;
-				++characters_remaining;
-			}
-			else
-			{
-				// we backed up as far as the original string (in other words, nothing)
-				if (x > start_x)
-				{
-					Text_SetXY(x, start_y);
-				}
-
-				x = start_x;
-			}
-		}
-		else if (the_char == CH_DEL)
-		{
-			if (curr_pos < curr_len)
-			{
-				// user had cursored left at some point, and is ok to delete from the right
-				// shift all chars from cursor rightwards, one slot to the left.
-				
-				for (i = curr_pos; i < curr_len; i++)
-				{
-					the_buffer[i] = the_buffer[i+1];
-				}
-				
-				the_buffer[i] = '\0';
-				Text_DrawStringAtXY(start_x, start_y, the_buffer, fore_text, background);
-				Text_SetChar(CH_SPACE); // erase the last char in the string
-				Text_SetXY(x, start_y); // reset cursor position
-				
-				// we just removed a char so we have more chars available
-				--curr_len;
-				++characters_remaining;
-			}
-			else
-			{
-				// player is at the end of the string, no way to further delete from right
-				// do nothing
-			}
-		}
-		else if (the_char == CH_CURS_UP)
-		{
-			// place cursor at start of string
-			if (x != start_x)
-			{
-				if (curr_pos < curr_len)
-				{
-					Text_SetCharAtXY(x, start_y, *the_user_input);
-				}
-				else
-				{
-					Text_SetCharAtXY(x, start_y, CH_SPACE);
-				}
-
-				x = start_x;
-				curr_pos = 0;
-				the_user_input = the_buffer;
-				Text_SetXY(x, start_y);
-			}			
-		}
-		else if (the_char == CH_CURS_DOWN)
-		{
-			// place cursor at end of string
-			if (curr_pos < curr_len)
-			{
-				Text_SetCharAtXY(x, start_y, *the_user_input);
-				x = start_x + curr_len;
-				curr_pos = curr_len;
-				the_user_input = the_buffer + curr_len;
-				Text_SetXY(x, start_y);
-			}			
-		}
-		else if (the_char == CH_CURS_RIGHT)
-		{
-			if (curr_pos < curr_len)
-			{
-				// user had cursored left, and is now cursoring right
-				Text_SetCharAtXY(x, start_y, *the_user_input);
-				++the_user_input;
-				++x;
-				++curr_pos;
-				Text_SetXY(x, start_y);
-			}
-			else
-			{
-				// player is at the end of the string, we don't want them to cursor further right
-				// do nothing
-			}
-		}
-		else if (the_char == CH_CURS_LEFT)
-		{
-			if (curr_pos > 0)
-			{
-				// user is cursoring towards beginning of string, but isn't there yet
-				if (curr_pos < curr_len)
-				{
-					Text_SetCharAtXY(x, start_y, *the_user_input);
-				}
-				else
-				{
-					Text_SetCharAtXY(x, start_y, CH_SPACE);
-				}
-
-				--the_user_input;
-				--x;
-				--curr_pos;
-				Text_SetXY(x, start_y);
-			}
-			else
-			{
-				// player is at the start of the string, we don't want them to cursor further left
-				// do nothing
-			}
-		}
-		else
-		{
-			// a typeable key has been hit: insert if enough chars (or do nothing if not), or typeover the current char if overwrite mode is on
-			
-			if (overwrite_mode == PARAM_USE_OVERWRITE_MODE)
-			{
-				*the_user_input = the_char;
-				//DEBUG_OUT(("%s %d: the_user_input='%s', chrs remain=%u", __func__, __LINE__, the_user_input, characters_remaining));
-
-				// if in middle of string, overwrite what was there, move cursor to right. 
-				// if at end of string, and haven't hit max yet, show new char and move to right
-				if (characters_remaining)
-				{
-					if (curr_pos == curr_len)
-					{
-						--characters_remaining;
-						++curr_len;
-					}
-	
-					Text_SetCharAtXY(x, start_y, the_char);
-					++the_user_input;
-					++x;
-					++curr_pos;
-					Text_SetXY(x, start_y);
-				}
-			}
-			else
-			{
-				if (characters_remaining)
-				{
-					// move all chars to right of cursor right one slot
-					for (i = curr_len-1; i >= curr_pos; i--)
-					{
-						the_buffer[i+1] = the_buffer[i];
-					}
-
-					*the_user_input = the_char;
-					
-					Text_DrawCharsAtXY(x, start_y, (uint8_t*)the_user_input, (curr_len - curr_pos) + 1);
-					
-					--characters_remaining;
-					++curr_len;
-
-					++the_user_input;
-					++x;
-					++curr_pos;
-					Text_SetXY(x, start_y);
-				}
-			}
-		}
-	}
-
-	// user hit enter - make sure we terminate the string at the end, not where the cursor may be
-	the_user_input = the_buffer + curr_len;
-	*the_user_input = '\0';
-
-	// did user end up entering anything?
-	if (curr_len == 0)
-	{
-		return false;
-	}
-
-	return true;
+    uint8_t length, cursor, key;
+    if (!the_buffer || the_max_length < 1 || start_y >= SCREEN_NUM_ROWS ||
+        start_x + the_max_length >= SCREEN_NUM_COLS) return false;
+    length = General_Strnlen(the_buffer, the_max_length);
+    the_buffer[length] = 0;
+    cursor = length;
+    Sys_EnableTextModeCursor(true);
+    for (;;) {
+        Text_FillBox(start_x, start_y, start_x + the_max_length, start_y, CH_SPACE, COLOR_BRIGHT_WHITE, COLOR_BLACK);
+        Text_DrawStringAtXY(start_x, start_y, the_buffer, COLOR_BRIGHT_WHITE, COLOR_BLACK);
+        Text_SetXY(start_x + cursor, start_y);
+        key = Keyboard_GetChar();
+        if (key == CH_ESC || key == CH_RUNSTOP || key == CH_ENTER) {
+            Sys_EnableTextModeCursor(false);
+            return key == CH_ENTER && length != 0;
+        }
+        if (key == CH_CURS_LEFT) { if (cursor) --cursor; }
+        else if (key == CH_CURS_RIGHT) { if (cursor < length) ++cursor; }
+        else if (key == CH_CURS_UP) cursor = 0;
+        else if (key == CH_CURS_DOWN) cursor = length;
+        else if (key == CH_BKSP) {
+            if (cursor) { --cursor; memmove(the_buffer + cursor, the_buffer + cursor + 1, length - cursor); --length; }
+        } else if (key == CH_DEL) {
+            if (cursor < length) { memmove(the_buffer + cursor, the_buffer + cursor + 1, length - cursor); --length; }
+        } else if (key >= 32 && key < 127) {
+            if (overwrite_mode == PARAM_USE_OVERWRITE_MODE && cursor < length) the_buffer[cursor++] = key;
+            else if (length < the_max_length) {
+                memmove(the_buffer + cursor + 1, the_buffer + cursor, length - cursor + 1);
+                the_buffer[cursor++] = key;
+                ++length;
+            }
+        }
+        the_buffer[length] = 0;
+    }
 }
 
 
@@ -2143,7 +1881,7 @@ bool Text_GetStringFromUser(char* the_buffer, int8_t the_max_length, uint8_t sta
 // void Text_ShowColors(void)
 // {
 // 	uint8_t	i;
-// 	
+//
 // 	for(i = 0; i<16; i++)
 // 	{
 // 		Text_SetCharAndColorAtXY(i,0,7,i,COLOR_BLACK);
@@ -2168,4 +1906,4 @@ bool Text_GetStringFromUser(char* the_buffer, int8_t the_max_length, uint8_t sta
 // 	Text_DrawString("Goodbye", COLOR_RED, COLOR_BLUE);
 // 	Text_SetChar('M');
 // 	// TESTY stuff end
-	
+

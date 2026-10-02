@@ -11,7 +11,7 @@
 
 /* about this class: FMMemorySystem
  *
- *  This class holds functions and properties related to viewing and manipulating system memory, including extended memory, on the F256
+ *  This class holds functions and properties related to viewing and manipulating system memory, including extended memory, on the WILDBITS
  *
  *** things this class needs to be able to do
  *
@@ -31,7 +31,7 @@
  *
  * An array of FMBankObjects (potentially empty)
  * flag to indicate RAM vs Flash, R/W vs R
- * 
+ *
  *
  */
 
@@ -47,7 +47,7 @@
 /*                            Macro Definitions                              */
 /*****************************************************************************/
 
-#define MEMORY_BANK_COUNT		64	// 64 banks each for RAM and Flash in an F256
+#define MEMORY_BANK_COUNT		64	// 64 banks each for RAM and Flash in an WILDBITS
 
 #define PARAM_MARK_SELECTED		true	// param for MemSys_SetBankSelectionByRow
 #define PARAM_MARK_UNSELECTED	true	// param for MemSys_SetBankSelectionByRow
@@ -68,7 +68,7 @@ typedef struct FMMemorySystem
 {
 	bool				is_flash_;							// set to false when representing RAM, not flash.
 	FMBankObject		bank_[MEMORY_BANK_COUNT];
-	int16_t				cur_row_;							// 0-n: selected bank num. 0=first bank. -1 if no bank selected. 
+	int16_t				cur_row_;							// 0-n: selected bank num. 0=first bank. -1 if no bank selected.
 } FMMemorySystem;
 
 

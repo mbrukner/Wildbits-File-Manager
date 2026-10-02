@@ -7,8 +7,8 @@
  *      Author: micahbly
  */
 
-// adapted for (Lich King) Foenix F256 Jr starting November 30, 2022
-// adapted for f/manager Foenix F256 starting March 10, 2024
+// adapted for (Lich King) Foenix WILDBITS Jr starting November 30, 2022
+// adapted for Wildbits File Manager Foenix WILDBITS starting March 10, 2024
 
 
 #ifndef KEYBOARD_H_
@@ -56,23 +56,23 @@
 #define CH_ENTER        13
 #define CH_ESC          27
 #define CH_TAB          9
-#define CH_BKSP   		0x08	
-#define CH_DEL   		0x7F	// 127	
+#define CH_BKSP   		0x08
+#define CH_DEL   		0x7F	// 127
 // #define CH_DEL          0x08
 #define CH_RUNSTOP		3
 
-#define CH_F1      		0x81	
-#define CH_F2      		0x82	
-#define CH_F3      		0x83	
-#define CH_F4      		0x84	
-#define CH_F5      		0x85	
-#define CH_F6      		0x86	
-#define CH_F7      		0x87	
-#define CH_F8     		0x88	
-#define CH_F9      		0x89	
-#define CH_F10     		0x8a	
-#define CH_F11     		0x8b	
-#define CH_F12    		0x8c	
+#define CH_F1      		0x81
+#define CH_F2      		0x82
+#define CH_F3      		0x83
+#define CH_F4      		0x84
+#define CH_F5      		0x85
+#define CH_F6      		0x86
+#define CH_F7      		0x87
+#define CH_F8     		0x88
+#define CH_F9      		0x89
+#define CH_F10     		0x8a
+#define CH_F11     		0x8b
+#define CH_F12    		0x8c
 #define CH_CURS_UP      0x10
 #define CH_CURS_DOWN    0x0e
 #define CH_CURS_LEFT    0x02
@@ -81,22 +81,22 @@
 #define CH_NINE			57		// for number ranges when converting user input to numbers
 
 // keypad
-#define CH_K0      		'0'	
-#define CH_K1      		'1'	
-#define CH_K2      		'2'		
-#define CH_K3      		'3'		
-#define CH_K4      		'4'		
-#define CH_K5      		'5'		
-#define CH_K6     		'6'		
-#define CH_K7  			'7'		
-#define CH_K8  			'8'		
-#define CH_K9    		'9'		
-#define CH_KENTER   	(CH_ENTER)	
-#define CH_KPLUS    	'+'	
-#define CH_KMINUS    	'-'	
-#define CH_KTIMES   	'*'	
-#define CH_KDIV   		'/'	
-#define CH_KPOINT  		'.'	
+#define CH_K0      		'0'
+#define CH_K1      		'1'
+#define CH_K2      		'2'
+#define CH_K3      		'3'
+#define CH_K4      		'4'
+#define CH_K5      		'5'
+#define CH_K6     		'6'
+#define CH_K7  			'7'
+#define CH_K8  			'8'
+#define CH_K9    		'9'
+#define CH_KENTER   	(CH_ENTER)
+#define CH_KPLUS    	'+'
+#define CH_KMINUS    	'-'
+#define CH_KTIMES   	'*'
+#define CH_KDIV   		'/'
+#define CH_KPOINT  		'.'
 
 
 /*****************************************************************************/
@@ -116,7 +116,7 @@ typedef struct KeyRepeater
 	uint8_t		cookie;
 } KeyRepeater;
 
-	
+
 /*****************************************************************************/
 /*                             Global Variables                              */
 /*****************************************************************************/
@@ -140,5 +140,8 @@ void Keyboard_ProcessEvents(void);
 // initiate the minute hand timer
 void Keyboard_InitiateMinuteHand(void);
 
+
+// Observe background events consumed by synchronous disk waits.
+void Keyboard_DeferBackgroundEvent(void);
 
 #endif /* KEYBOARD_H_ */

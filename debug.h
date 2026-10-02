@@ -7,7 +7,7 @@
  *      Author: micahbly
  */
 
-// This is the debug stuff extracted from general.c. Differs from f256e version by not relying on fatFS
+// This is the debug stuff extracted from general.c. Differs from wildbitse version by not relying on fatFS
 
 #ifndef DEBUG_H_
 #define DEBUG_H_
@@ -37,14 +37,14 @@
 // C includes
 #include <stdbool.h>
 
-// F256 includes
+// WILDBITS includes
 
 /*****************************************************************************/
 /*                            Macro Definitions                              */
 /*****************************************************************************/
 
 
-#ifdef LOG_LEVEL_1 
+#ifdef LOG_LEVEL_1
 	#define LOG_ERR(x) General_LogError x
 #else
 	#define LOG_ERR(x)
@@ -91,7 +91,7 @@
 /*                             Global Variables                              */
 /*****************************************************************************/
 
-#ifdef LOG_ERR
+#ifdef LOG_LEVEL_1
 extern const char *_null_err;
 extern const char *_mark_selected_err;
 extern const char *_allocate_memory_err;

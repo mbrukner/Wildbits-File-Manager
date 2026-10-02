@@ -33,8 +33,8 @@
 #include <string.h>
 #include <ctype.h>
 
-// F256 includes
-#include "f256.h"
+// WILDBITS includes
+#include "wildbits.h"
 
 
 
@@ -52,6 +52,7 @@
 
 static uint8_t				memsys_temp_kupname_buffer_storage[MEMSYS_KUPNAME_TEMP_BUFFER_LEN];
 static uint8_t*				memsys_temp_kupname_buffer = memsys_temp_kupname_buffer_storage;
+static uint8_t memsys_page_buffer[256];
 
 
 /*****************************************************************************/
@@ -101,7 +102,7 @@ FMBankObject* MemSys_FindBankByBankPath(FMMemorySystem* the_memsys, char* the_ba
 
 // **** CONSTRUCTOR AND DESTRUCTOR *****
 
-	
+
 // constructor
 // allocates space for the object and any string or other properties that need allocating
 // if the passed memsys pointer is not NULL, it will pass it back without allocating a new one.
@@ -149,7 +150,7 @@ void MemSys_Destroy(FMMemorySystem** the_memsys)
 	}
 
 	MemSys_ResetAllBanks(*the_memsys);
-	
+
 	// free the folder object itself
 	LOG_ALLOC(("%s %d:	__FREE__	*the_memsys	%p	size	%i", __func__ , __LINE__, *the_memsys, sizeof(FMMemorySystem)));
 	free(*the_memsys);
@@ -161,17 +162,17 @@ void MemSys_Destroy(FMMemorySystem** the_memsys)
 void MemSys_ResetAllBanks(FMMemorySystem* the_memsys)
 {
 	uint8_t		i;
-	
+
 	if (the_memsys == NULL)
 	{
 		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_DESTROY_ALL_MEMSYS_WAS_NULL);	// crash early, crash often
 	}
-	
+
 	for (i = 0; i < MEMORY_BANK_COUNT; i++)
 	{
 		FMBankObject*		this_bank = &the_memsys->bank_[i];
-		
+
 		Bank_Reset(this_bank);
 	}
 
@@ -192,7 +193,7 @@ void MemSys_SetCurrentRow(FMMemorySystem* the_memsys, int16_t the_row_number)
 		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_SET_CURR_ROW_FOLDER_WAS_NULL);	// crash early, crash often
 	}
-	
+
 	the_memsys->cur_row_ = the_row_number;
 }
 
@@ -209,7 +210,7 @@ int16_t MemSys_GetCurrentRow(FMMemorySystem* the_memsys)
 		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_MEMSYS_GET_CURR_ROW_FOLDER_WAS_NULL);	// crash early, crash often
 	}
-	
+
 	return the_memsys->cur_row_;
 }
 
@@ -223,12 +224,12 @@ int16_t MemSys_GetCurrentRow(FMMemorySystem* the_memsys)
 // 		//App_Exit(ERROR_MEMSYS_GET_CURR_ROW_FOLDER_WAS_NULL);	// crash early, crash often
 // 		return NULL;
 // 	}
-// 	
+//
 // 	if (the_memsys->cur_row_ < 0)
 // 	{
 // 		return NULL;
 // 	}
-// 	
+//
 // 	return &the_memsys->bank_[the_memsys->cur_row_];
 // }
 
@@ -240,14 +241,14 @@ uint8_t MemSys_GetCurrentBankNum(FMMemorySystem* the_memsys)
 	{
 		LOG_ERR((_null_err, __func__ , __LINE__));
 		//App_Exit(ERROR_MEMSYS_GET_CURR_ROW_FOLDER_WAS_NULL);	// crash early, crash often
-		return NULL;
+		return 255;
 	}
-	
-	if (the_memsys->cur_row_ < 0)
+
+	if (the_memsys->cur_row_ < 0 || the_memsys->cur_row_ >= MEMORY_BANK_COUNT)
 	{
-		return NULL;
+		return 255;
 	}
-	
+
 	return the_memsys->bank_[the_memsys->cur_row_].bank_num_;
 }
 
@@ -257,12 +258,12 @@ uint8_t MemSys_GetCurrentBankNum(FMMemorySystem* the_memsys)
 bool MemSys_GetCurrentRowKUPState(FMMemorySystem* the_memsys)
 {
 	FMBankObject*		the_bank;
-	
+
 	if (the_memsys->cur_row_ < 0)
 	{
 		return false;
 	}
-	
+
 	the_bank = &the_memsys->bank_[the_memsys->cur_row_];
 
 	return (the_bank->is_kup_);
@@ -275,15 +276,15 @@ bool MemSys_GetCurrentRowKUPState(FMMemorySystem* the_memsys)
 // 	// LOGIC:
 // 	//   iterate through all banks in the memory system
 // 	//   when comparing, the int compare_len is used to limit the number of chars of bank that are searched
-// 
+//
 // 	uint8_t		i;
-// 
+//
 // 	if (the_memsys == NULL)
 // 	{
 // 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
 // 		return NULL;
 // 	}
-// 
+//
 // 	for (i=0; i < MEMORY_BANK_COUNT; i++)
 // 	{
 // 		if ( General_Strncasecmp(search_phrase, the_memsys->bank_[i].name_, compare_len) == 0)
@@ -291,9 +292,9 @@ bool MemSys_GetCurrentRowKUPState(FMMemorySystem* the_memsys)
 // 			return &the_memsys->bank_[i];
 // 		}
 // 	}
-// 
+//
 // 	DEBUG_OUT(("%s %d: couldn't find bank name match for '%s'. compare_len=%i", __func__ , __LINE__, search_phrase, compare_len));
-// 
+//
 // 	return NULL;
 // }
 
@@ -305,19 +306,19 @@ bool MemSys_GetCurrentRowKUPState(FMMemorySystem* the_memsys)
 // 	// LOGIC:
 // 	//   iterate through all banks in the memory system
 // 	//   when comparing, the int compare_len is used to limit the number of chars of bank that are searched
-// 	
+//
 // 	// TODO: write a general routine to find matches to an arbitrary string (not NULL terminated?) of chars starting at a given memory loc
 // 	//    what is here is just a starting match to the description string.
 // 	//    hmm. check standard C libs, I think there is something already that will do this, at least with strings. won't help in memory.
-// 
+//
 // 	uint8_t		i;
-// 
+//
 // 	if (the_memsys == NULL)
 // 	{
 // 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
 // 		return NULL;
 // 	}
-// 
+//
 // 	for (i=0; i < MEMORY_BANK_COUNT; i++)
 // 	{
 // 		if ( General_Strncasecmp(search_phrase, the_memsys->bank_[i].description_, compare_len) == 0)
@@ -325,9 +326,9 @@ bool MemSys_GetCurrentRowKUPState(FMMemorySystem* the_memsys)
 // 			return &the_memsys->bank_[i];
 // 		}
 // 	}
-// 
+//
 // 	DEBUG_OUT(("%s %d: couldn't find bank description match for '%s'. compare_len=%i", __func__ , __LINE__, search_phrase, compare_len));
-// 
+//
 // 	return NULL;
 // }
 
@@ -340,7 +341,7 @@ bool MemSys_GetCurrentRowKUPState(FMMemorySystem* the_memsys)
 // 	//       needs to return the exact memory loc
 // 	//       needs to be able to search across 256b boundaries
 // 	//       needs to be able to accept a starting addr that isn't 0 (in other words, "find next", not just find first).
-// 	
+//
 // 	return NULL;
 // }
 
@@ -356,7 +357,7 @@ FMBankObject* MemSys_FindBankByRow(FMMemorySystem* the_memsys, uint8_t the_row)
 		LOG_ERR((_null_err, __func__ , __LINE__));
 		return NULL;
 	}
-	
+
 	for (i=0; i < MEMORY_BANK_COUNT; i++)
 	{
 		if (the_memsys->bank_[i].row_ == the_row)
@@ -364,7 +365,7 @@ FMBankObject* MemSys_FindBankByRow(FMMemorySystem* the_memsys, uint8_t the_row)
 			return &the_memsys->bank_[i];
 		}
 	}
-	
+
 	DEBUG_OUT(("%s %d: couldn't find row %i", __func__ , __LINE__, the_row));
 
 	return NULL;
@@ -380,10 +381,10 @@ FMBankObject* MemSys_FindBankByRow(FMMemorySystem* the_memsys, uint8_t the_row)
 
 // populate the banks in a memory system by scanning EM
 void MemSys_PopulateBanks(FMMemorySystem* the_memsys)
-{	
+{
 	uint8_t		i;
 	uint8_t*	copy_buffer;
-	
+
 	uint8_t		kup_version;
 	char*		kup_name;
 	char*		kup_args;	// we don't care, but need to get past them to get to description
@@ -399,7 +400,7 @@ void MemSys_PopulateBanks(FMMemorySystem* the_memsys)
 		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_POPULATE_FILES_FOLDER_WAS_NULL);	// crash early, crash often
 	}
-		
+
 	if (the_memsys->is_flash_)
 	{
 		flash_offset = MEMORY_BANK_COUNT;
@@ -408,59 +409,61 @@ void MemSys_PopulateBanks(FMMemorySystem* the_memsys)
 	{
 		flash_offset = 0;
 	}
-	
+
 	// use string buff 2 for interbank copying
-	copy_buffer = (uint8_t*)global_string_buff2;
-	
+	copy_buffer = memsys_page_buffer;
+
 	// read the first 256 bytes of every bank in extended memory
 	for (i = 0; i < MEMORY_BANK_COUNT; i++)
 	{
 		bank_num = i + flash_offset;
-		
+
 		App_EMDataCopy((uint8_t*)copy_buffer, bank_num, 0, PARAM_COPY_FROM_EM);
-		
+        copy_buffer[255] = 0;
+
 		// check for KUP continuation, or KUP signature $F2$56, or every other bank
 		// LOGIC:
-		//   The first bank in a KUP identifies itself with "F256" 2-byte signature. 
+		//   The first bank in a KUP identifies itself with "WILDBITS" 2-byte signature.
 		//   That header also indicates how many banks the KUP uses. we will use that to group the KUP banks together
-		
+
 		if (remaining_kup_banks > 0)
 		{
 			// we are continuing a previously identified KUP bank
-			sprintf(global_string_buff1, "%s.%i", memsys_temp_kupname_buffer, num_banks_in_kup - remaining_kup_banks); // will result in "myprog-1", "myprog-2", etc. 
+			snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, "%s.%i", memsys_temp_kupname_buffer, num_banks_in_kup - remaining_kup_banks); // will result in "myprog-1", "myprog-2", etc.
 			Bank_Init(&the_memsys->bank_[i], global_string_buff1, NULL, BANK_KUP_SECONDARY, bank_num, i);
 
 			//DEBUG_OUT(("%s %d: EM bank %02x: '%s' banks in kup=%i, remain=%i", __func__ , __LINE__, i, global_string_buff1, num_banks_in_kup, remaining_kup_banks));
-			
+
 			--remaining_kup_banks;
 		}
-		else if (copy_buffer[0] == 0xF2 && copy_buffer[1] == 0x56)
+		else if (copy_buffer[0] == 0xF2 && copy_buffer[1] == 0x56 && copy_buffer[2] > 0 && copy_buffer[2] <= MEMORY_BANK_COUNT - i)
 		{
 			remaining_kup_banks = num_banks_in_kup = copy_buffer[2];	// Byte  2    the size of program in 8k blocks
 			kup_version = copy_buffer[6];
-			
+
 			// get name: all versions of KUP supported the name
 			kup_name = (char*)&copy_buffer[10];
-			the_len = General_Strnlen((char*)kup_name, 128);
+			the_len = strlen(kup_name);
 			General_Strlcpy((char*)memsys_temp_kupname_buffer, kup_name, MEMSYS_KUPNAME_TEMP_BUFFER_LEN);	// get a local-to-this-overlay copy for use with any child banks of the KUP
-			
+
 			//DEBUG_OUT(("%s %d: EM bank %02x: '%s' banks in kup=%u, namebuf='%s'", __func__ , __LINE__, i, kup_name, num_banks_in_kup, memsys_temp_kupname_buffer));
-			
-			if (kup_version > 0)
+
+			if (kup_version > 0 && the_len < 244)
 			{
 				kup_args = kup_name + the_len + 1;
-				the_len = General_Strnlen((char*)kup_args, 128);
-				kup_description = kup_args + the_len + 1;
+				the_len = strlen(kup_args);
+                kup_description = kup_args + the_len;
+                if (kup_description < (char*)copy_buffer + 255) ++kup_description;
 			}
 			else
 			{
 				kup_description = (char*)"";
 			}
-			
-			//sprintf(global_string_buff1, "EM bank %02x: '%s': '%s'", i, kup_name, kup_description);
+
+			//snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, "EM bank %02x: '%s': '%s'", i, kup_name, kup_description);
 			//Buffer_NewMessage(global_string_buff1);
 			//DEBUG_OUT(("%s %d: EM bank %02x: '%s': '%s'", __func__ , __LINE__, i, kup_name, kup_description));
-			
+
 			Bank_Init(&the_memsys->bank_[i], kup_name, kup_description, BANK_KUP_PRIMARY, bank_num, i);
 			--remaining_kup_banks; // don't forget to remove this bank from the count of banks associated with this KUP
 		}
@@ -469,7 +472,7 @@ void MemSys_PopulateBanks(FMMemorySystem* the_memsys)
 			Bank_Init(&the_memsys->bank_[i], NULL, NULL, BANK_NON_KUP, bank_num, i);
 			//DEBUG_OUT(("%s %d: EM bank %02x is not a KUP bank; name='%s', desc='%s'", __func__ , __LINE__, bank_num, the_memsys->bank_[i].name_, the_memsys->bank_[i].description_));
 		}
-	}	
+	}
 
 	// do NOT set current row to first bank
 	//the_memsys->cur_row_ = -1; // leave at -1 until MemSys_SetBankSelectionByRow() or it won't detect a change
@@ -477,7 +480,7 @@ void MemSys_PopulateBanks(FMMemorySystem* the_memsys)
 
 
 
-// // copies the passed bank. 
+// // copies the passed bank.
 // bool MemSys_CopyBank(FMMemorySystem* the_memsys, FMBankObject* the_bank, FMMemorySystem* the_target_folder)
 // {
 // 	int32_t				bytes_copied;
@@ -490,57 +493,57 @@ void MemSys_PopulateBanks(FMMemorySystem* the_memsys)
 // 	char*				the_target_folder_path;
 // 	bool				success = false;
 // 	WB2KList*			the_target_file_item;
-// 	
+//
 // 	if (the_memsys == NULL)
 // 	{
 // 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
 // 		App_Exit(ERROR_COPY_FILE_SOURCE_FOLDER_WAS_NULL);	// crash early, crash often
 // 	}
-// 
+//
 // 	if (the_target_folder == NULL)
 // 	{
 // 		LOG_ERR(("%s %d: param the_target_folder was null", __func__ , __LINE__));
 // 		App_Exit(ERROR_COPY_FILE_TARGET_FOLDER_WAS_NULL);	// crash early, crash often
 // 	}
-// 	
+//
 // 	// LOGIC:
 // 	//   if a file, call routine to copy bytes of file. then call again for the info file.
 // 	//   if a folder:
 // 	//     We only have a folder object for the current source folder, we do not have one for the target
 // 	//     So every time we encounter a source folder, we have to generate the equivalent path for the target and store in BankMover
-// 	//     Then check if the folder path exists on the target volume. Call makedir to create the folder path. then copy info file bytes. 
+// 	//     Then check if the folder path exists on the target volume. Call makedir to create the folder path. then copy info file bytes.
 // 	//       NOTE: there is an assumption that the target folder is a real, existing path, so no need to create "up the chain". This assumption is based on how copy files works.
 // 	//     This routine will not attempt to delete folders and their contents if they already exist, it will happily copy files into those folders. (more windows than mac)
 // 	//   in either case, add the file and its info file (if any) to any open windows showing the target folder
 // 	//     NOTE: in case of folder, we have to copy the info file before updating the target folder chain, or info file will be placed IN the folder, rather than next to it
-// 	
+//
 // 	if (the_bank->is_directory_)
 // 	{
 // 	}
 // 	else
 // 	{
 // 		// handle a file...
-// 
+//
 // 		// update target file path without adding the source file's filename to it
 // // 		BankMover_UpdateCurrentTargetFolderPath(App_GetBankMover(global_app), the_memsys->folder_file_->file_path_);
 // // 		the_target_folder_path = BankMover_GetCurrentTargetFolderPath(App_GetBankMover(global_app));
-// 		
+//
 // 		// check if the new file path is the same as the old: would be the case in a 'duplicate this file' situation
 // 		// if so, figure out a compliant name that is unique. in fact, don't compare to the file at all, compare to entire folder!
 // 		strcpy(folder_temp_filename, the_bank->file_name_);
-// 		name_uniqueifier = 48; // start artificially high so it resets to 48. 
-// 		
+// 		name_uniqueifier = 48; // start artificially high so it resets to 48.
+//
 // 		while ( (the_target_file_item = MemSys_FindListItemByBankName(the_target_folder, folder_temp_filename)) != NULL && tries < max_tries)
-// 		{		
-// 			// there is a file in this folder with the same name. 
+// 		{
+// 			// there is a file in this folder with the same name.
 // 			// make name unique, then proceed with copy
 // 			// we have limited filesize to work with. if under limit, add '1'. if at limit, remove right-most character?
-// 			
+//
 // 			name_len = strlen(folder_temp_filename);
-// 			
+//
 // 			if (name_len < (FILE_MAX_FILENAME_SIZE-1) && name_uniqueifier > 57)
 // 			{
-// 				name_uniqueifier = 48; // ascii 48, a 0 char. 
+// 				name_uniqueifier = 48; // ascii 48, a 0 char.
 // 				folder_temp_filename[name_len] = name_uniqueifier;
 // 				folder_temp_filename[name_len+1] = '\0';
 // 			}
@@ -549,7 +552,7 @@ void MemSys_PopulateBanks(FMMemorySystem* the_memsys)
 // 				// name is already at max, and we have cycled through digits (or haven't started yet)
 // 				// snip off leading char and try again
 // 				++folder_temp_filename;
-// 				name_uniqueifier = 48; // ascii 48, a 0 char. 
+// 				name_uniqueifier = 48; // ascii 48, a 0 char.
 // 				folder_temp_filename[name_len] = name_uniqueifier;
 // 				folder_temp_filename[name_len+1] = '\0';
 // 			}
@@ -559,47 +562,47 @@ void MemSys_PopulateBanks(FMMemorySystem* the_memsys)
 // 				folder_temp_filename[name_len-1] = name_uniqueifier;
 // 				++name_uniqueifier;
 // 			}
-// 			
+//
 // 			++tries;
 // 		}
-// 
-// 		//sprintf(global_string_buff1, "new='%s', tries=%u", folder_temp_filename, tries);
+//
+// 		//snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, "new='%s', tries=%u", folder_temp_filename, tries);
 // 		//Buffer_NewMessage(global_string_buff1);
-// 		
+//
 // 		if (the_target_file_item != NULL)
 // 		{
 // 			// couldn't get a unique name
 // 			//Buffer_NewMessage("couldn't make unique name");
 // 			return false;
 // 		}
-// 		
+//
 // 		// build a file path for target file, based on BankMover's current target folder path and source file name
 // 		the_target_folder_path = the_target_folder->file_path_;
 // 		General_CreateBankPathFromFolderAndBank(global_temp_path_1, the_memsys->file_path_, the_bank->file_name_);
 // 		General_CreateBankPathFromFolderAndBank(global_temp_path_2, the_target_folder_path, folder_temp_filename);
-// 		
-// 		//sprintf(global_string_buff1, "copy file src path='%s', tgt path='%s', size=%lu", global_temp_path_1, global_temp_path_2, the_bank->size_);
+//
+// 		//snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, "copy file src path='%s', tgt path='%s', size=%lu", global_temp_path_1, global_temp_path_2, the_bank->size_);
 // 		//Buffer_NewMessage(global_string_buff1);
-// 
+//
 // 		// call function to copy file bits
 // 		//DEBUG_OUT(("%s %d: copying file '%s' to '%s'...", __func__ , __LINE__, the_bank->file_name_, global_temp_path_2));
 // 		//Buffer_NewMessage(General_GetString(ID_STR_MSG_COPYING));
-// 		
+//
 // 		bytes_copied = MemSys_CopyBankBytes(global_temp_path_1, global_temp_path_2, the_bank->size_);
-// 		
+//
 // 		if (bytes_copied < 0)
 // 		{
 // 			return false;
 // 		}
-// 	}	
-// 	
-// 	// mark the file as not selected 
+// 	}
+//
+// 	// mark the file as not selected
 // 	//Bank_SetSelected(the_bank, false);
-// 
+//
 // 	// add a copy of the file to this target folder
 // 	success = MemSys_AddNewBankAsCopy(the_target_folder, the_bank);
 // 	//Buffer_NewMessage("added copy of file object to target folder");
-// 			
+//
 // 	return success;
 // }
 
@@ -609,21 +612,21 @@ bool MemSys_BankIsWriteable(FMMemorySystem* the_memsys)
 {
 	FMBankObject*		the_bank;
 	uint8_t				i;
-	
+
 	// no one can write to flash
 	if (the_memsys->is_flash_ == true)
 	{
 		return false;
 	}
-	
+
 	if (the_memsys->cur_row_ < 0)
 	{
 		return false;
 	}
-	
+
 	the_bank = &the_memsys->bank_[the_memsys->cur_row_];
 
-	// user is not allowed to write to first 64K of RAM, or to f/manager extended memory
+	// user is not allowed to write to first 64K of RAM, or to Wildbits File Manager extended memory
 	for (i = 0; i <= (uint8_t)OVERLAY_MEMSYSTEM; i++)
 	{
 		if (the_bank->bank_num_ == i)
@@ -631,10 +634,11 @@ bool MemSys_BankIsWriteable(FMMemorySystem* the_memsys)
 			return false;
 		}
 	}
-	
-	// user is not allowed to write to f/manager strings or filenames RAM either
+
+	// user is not allowed to write to Wildbits File Manager strings or filenames RAM either
 	if (the_bank->bank_num_ == STRING_STORAGE_EM_SLOT ||
-		the_bank->bank_num_ == FILENAME_STORAGE_EM_SLOT )
+		the_bank->bank_num_ == FILENAME_STORAGE_EM_SLOT ||
+        the_bank->bank_num_ == FILENAME_STORAGE_EM_SLOT + 1)
 	{
 		return false;
 	}
@@ -649,12 +653,12 @@ FMBankObject* MemSys_SetBankSelectionByRow(FMMemorySystem* the_memsys, uint16_t 
 	FMBankObject*		the_bank;
 	FMBankObject*		the_prev_selected_bank;
 
-	#ifdef LOG_ERR
+	#ifdef LOG_LEVEL_1
 	char *errstr = "%s %d: couldn't mark bank '%s' as selected";
 	#endif
 
 	the_bank = MemSys_FindBankByRow(the_memsys, the_row);
-	
+
 	if (the_bank == NULL)
 	{
 		return NULL;
@@ -662,16 +666,16 @@ FMBankObject* MemSys_SetBankSelectionByRow(FMMemorySystem* the_memsys, uint16_t 
 
 	if (do_selection)
 	{
-		// is this already the currently selected file? do we need to unselect a different one? (only 1 allowed at a time)	
+		// is this already the currently selected file? do we need to unselect a different one? (only 1 allowed at a time)
 		if (the_memsys->cur_row_ == the_row)
 		{
-			// we re-selected the current file. 
+			// we re-selected the current file.
 		}
 		else
 		{
-			// something else was selected. find it, and mark it unselected. 
+			// something else was selected. find it, and mark it unselected.
 			the_prev_selected_bank = MemSys_FindBankByRow(the_memsys, the_memsys->cur_row_);
-		
+
 			if (the_prev_selected_bank == NULL)
 			{
 			}
@@ -721,23 +725,23 @@ bool MemSys_FillCurrentBank(FMMemorySystem* the_memsys)
 {
 	int16_t				the_fill_value;
 	FMBankObject*		the_bank;
-	
+
 	if (the_memsys->cur_row_ < 0)
 	{
 		return false;
 	}
-	
+
 	the_bank = &the_memsys->bank_[the_memsys->cur_row_];
 
 	the_fill_value = Bank_AskForFillValue();
-	
+
 	if (the_fill_value < 0)
 	{
 		return false;
 	}
-		
+
 	Bank_Fill(the_bank, the_fill_value);
-	
+
 	return true;
 }
 
@@ -747,16 +751,16 @@ bool MemSys_FillCurrentBank(FMMemorySystem* the_memsys)
 bool MemSys_ClearCurrentBank(FMMemorySystem* the_memsys)
 {
 	FMBankObject*		the_bank;
-	
+
 	if (the_memsys->cur_row_ < 0)
 	{
 		return false;
 	}
-	
+
 	the_bank = &the_memsys->bank_[the_memsys->cur_row_];
 
 	Bank_Clear(the_bank);
-	
+
 	return true;
 }
 
@@ -766,19 +770,19 @@ bool MemSys_ClearCurrentBank(FMMemorySystem* the_memsys)
 bool MemSys_ExecuteCurrentRow(FMMemorySystem* the_memsys)
 {
 	FMBankObject*		the_bank;
-	
+
 	if (the_memsys->cur_row_ < 0)
 	{
 		return false;
 	}
-	
+
 	the_bank = &the_memsys->bank_[the_memsys->cur_row_];
 
 	if (the_bank->is_kup_)
 	{
-		Kernal_RunNamed(the_bank->name_, strlen(the_bank->name_));	// this will only ever return in an error condition. 
+		Kernal_RunNamed(the_bank->name_, strlen(the_bank->name_));	// this will only ever return in an error condition.
 	}
-	
+
 	// if still here, this is an error condition, or the bank wasn't KUP
 	return false;
 }
@@ -791,7 +795,7 @@ bool MemSys_ExecuteCurrentRow(FMMemorySystem* the_memsys)
 // void MemSys_Print(void* the_payload)
 // {
 // 	FMMemorySystem*		the_memsys = (FMMemorySystem*)(the_payload);
-// 
+//
 // 	DEBUG_OUT(("+----------------------------------+-+------------+----------+--------+"));
 // 	DEBUG_OUT(("|Bank                              |S|Size (bytes)|Date      |Time    |"));
 // 	DEBUG_OUT(("+----------------------------------+-+------------+----------+--------+"));
@@ -799,4 +803,4 @@ bool MemSys_ExecuteCurrentRow(FMMemorySystem* the_memsys)
 // 	DEBUG_OUT(("+----------------------------------+-+------------+----------+--------+"));
 // 	DEBUG_OUT(("Total bytes %lu", the_memsys->total_bytes_));
 // }
-// 
+//

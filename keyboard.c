@@ -6,8 +6,8 @@
  *
  */
 
-// adapted for (Lich King) Foenix F256 Jr starting November 30, 2022
-// adapted for f/manager Foenix F256 starting March 10, 2024
+// adapted for (Lich King) Foenix WILDBITS Jr starting November 30, 2022
+// adapted for Wildbits File Manager Foenix WILDBITS starting March 10, 2024
 
 
 
@@ -18,7 +18,7 @@
 
 // project includes
 #include "keyboard.h"
-#include "f256.h"
+#include "wildbits.h"
 // #include "comm_buffer.h"	// just need for debugging
 #include "general.h"
 #include "memory.h"
@@ -31,7 +31,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-// F256 Kernel includes
+// WILDBITS Kernel includes
 #include "api.h"
 
 
@@ -56,6 +56,7 @@
 /*                          File-scope Variables                             */
 /*****************************************************************************/
 
+static bool minute_hand_pending;
 static uint8_t			keyboard_queue_entries;
 static uint8_t			keyboard_queue[KEYBOARD_QUEUE_SIZE];
 static KeyRepeater		keyboard_repeater;
@@ -68,8 +69,8 @@ static KeyRepeater		keyboard_repeater;
 // extern char* 			global_string_buffer;	// just need for debugging
 
 
-extern struct call_args args; // in gadget's version of f256 lib, this is allocated and initialized with &args in crt0. 
-extern struct event_t event; // in gadget's version of f256 lib, this is allocated and initialized with &event in crt0. 
+extern struct call_args args; // in gadget's version of wildbits lib, this is allocated and initialized with &args in crt0.
+extern struct event_t event; // in gadget's version of wildbits lib, this is allocated and initialized with &event in crt0.
 extern char error;
 
 
@@ -122,16 +123,16 @@ uint8_t Keyboard_PopQueue(void)
 	{
 		return 0;
 	}
-	
+
 	this_key = keyboard_queue[0];
-	
+
 	for (i = 0; i < (KEYBOARD_QUEUE_SIZE-1); i++)
 	{
 		keyboard_queue[i] = keyboard_queue[i+1];
 	}
-	
+
 	--keyboard_queue_entries;
-	
+
 	return this_key;
 }
 
@@ -156,10 +157,10 @@ uint8_t Keyboard_GetNextEvent(void)
 		return 0;
 	}
 
-	// We have a keyboard event. (which includes possibility of joystick event, on F256)
+	// We have a keyboard event. (which includes possibility of joystick event, on WILDBITS)
 	//Keyboard_ProcessKeyEvent();
 	//this_status = Keyboard_UpdateKeyboardJoystick();
-	
+
 	return 1;
 }
 
@@ -168,7 +169,7 @@ uint8_t Keyboard_GetNextEvent(void)
 uint8_t Keyboard_ProcessKeyEvent(void)
 {
 	bool		add_char_to_queue = true;
-	uint8_t		this_char;
+	uint8_t		this_char = 0;
 
 	if (event.type == EVENT(key.PRESSED))
 	{
@@ -189,19 +190,19 @@ uint8_t Keyboard_ProcessKeyEvent(void)
 			{
 				this_char = event.key.ascii;
 			}
-			
+
 			if (add_char_to_queue)
 			{
 				// Schedule repeats for keys from CBM/K keyboards
 				if (event.key.keyboard == 0)
 				{
-					// for f/manager, we only want repeat on cursor keys, delete, backspace, etc.
+					// for Wildbits File Manager, we only want repeat on cursor keys, delete, backspace, etc.
 					if (this_char == CH_CURS_UP || this_char == CH_CURS_DOWN || this_char == CH_CURS_LEFT || this_char == CH_CURS_RIGHT || this_char == CH_DEL || this_char == CH_RUNSTOP)
 					Keyboard_StartTimerForKey(this_char);
 				}
 
 				// for any keyboard type, add this char to the key buffer
-				Keyboard_AddToQueue(this_char);				
+				Keyboard_AddToQueue(this_char);
 			}
 	}
 	else
@@ -209,7 +210,7 @@ uint8_t Keyboard_ProcessKeyEvent(void)
 		// jmp     StopRepeat WHICH IS "inc     repeat.cookie -> rts"
 		keyboard_repeater.cookie++;
 
-		// prevent collision with the permanent minute hand cookie		
+		// prevent collision with the permanent minute hand cookie
 		if (keyboard_repeater.cookie == MINUTE_TIMER_COOKIE)
 		{
 			keyboard_repeater.cookie++;
@@ -224,16 +225,16 @@ uint8_t Keyboard_ProcessKeyEvent(void)
 void Keyboard_StartTimerForKey(uint8_t the_key)
 {
 	uint8_t		current_timer_value;
-	
+
 	keyboard_repeater.key = the_key;
 	keyboard_repeater.cookie++;			// set a new ID
-		
+
 	// prevent collision with the permanent minute hand cookie
 	if (keyboard_repeater.cookie == MINUTE_TIMER_COOKIE)
 	{
 		keyboard_repeater.cookie++;
 	}
-	
+
 	// Get the current frame counter
 	// including query makes the SetTimer call return the value of the current timer (in A)
 	args.timer.units = (TIMER_FRAMES | TIMER_QUERY);
@@ -250,10 +251,10 @@ void Keyboard_StartTimerForKey(uint8_t the_key)
 // pass the frame count of requested next event
 void Keyboard_ScheduleRepeatEvent(uint8_t next_frame_count)
 {
-	args.timer.absolute = next_frame_count;	
+	args.timer.absolute = next_frame_count;
 	args.timer.units = TIMER_FRAMES;
 	args.timer.cookie = keyboard_repeater.cookie;
-	
+
 	CALL(Clock.SetTimer);
 }
 
@@ -261,10 +262,13 @@ void Keyboard_ScheduleRepeatEvent(uint8_t next_frame_count)
 // schedule a repeat event for the minute clock
 void Keyboard_ScheduleMinuteHandRepeatEvent(void)
 {
-	args.timer.absolute = 60;	
+    uint8_t current_seconds;
+    args.timer.units = TIMER_SECONDS | TIMER_QUERY;
+    current_seconds = CALL(Clock.SetTimer);
+	args.timer.absolute = current_seconds + 60;
 	args.timer.units = TIMER_SECONDS;
 	args.timer.cookie = MINUTE_TIMER_COOKIE;
-	
+
 	CALL(Clock.SetTimer);
 }
 
@@ -292,10 +296,10 @@ uint8_t Keyboard_HandleRepeatTimerEvent(void)
 	{
 		return 0;
 	}
-	
+
 	// Schedule the next repeat for ~0.05s from now.
 	Keyboard_ScheduleRepeatEvent(event.timer.value + 3);
-	
+
 	// Return the key being repeated.
 	return keyboard_repeater.key;
 }
@@ -309,38 +313,54 @@ void Keyboard_AddToQueue(uint8_t the_char)
 	{
 		return;
 	}
-	
+
 	// add to queue
 	keyboard_queue[keyboard_queue_entries] = the_char;
 	keyboard_queue_entries++;
 }
 
 
+// Disk waits consume events too. Defer clock work until the UI owns kernel args again.
+void Keyboard_DeferBackgroundEvent(void)
+{
+    if (event.type == EVENT(timer.EXPIRED) && event.timer.cookie == MINUTE_TIMER_COOKIE)
+        minute_hand_pending = true;
+    if (event.type == EVENT(key.RELEASED)) {
+        ++keyboard_repeater.cookie;
+        if (keyboard_repeater.cookie == MINUTE_TIMER_COOKIE) ++keyboard_repeater.cookie;
+    }
+}
+
 // main event processor
 void Keyboard_ProcessEvents(void)
 {
 	uint8_t		repeated_char;
+    if (minute_hand_pending) {
+        minute_hand_pending = false;
+        App_DisplayTime();
+        Keyboard_ScheduleMinuteHandRepeatEvent();
+    }
 // 	bool		add_char_to_queue = true;
-	
+
 	while(1)
 	{
 		if (Keyboard_GetNextEvent() == 0)
 		{
 			return;
 		}
-		
+
 		if (event.type == EVENT(timer.EXPIRED))
 		{
 			if ((repeated_char = Keyboard_HandleRepeatTimerEvent()) != 0)
 			{
 				Keyboard_AddToQueue(repeated_char);
-			}		
+			}
 		}
 		else if (event.type == EVENT(key.RELEASED) || event.type == EVENT(key.PRESSED))
 		{
 			Keyboard_ProcessKeyEvent();
 		}
-	}	
+	}
 }
 
 
@@ -358,7 +378,7 @@ void Keyboard_ProcessEvents(void)
 char Keyboard_GetChar(void)
 {
 	uint8_t		the_char = 0;
-	
+
 	//DEBUG_OUT(("%s %d: entered", __func__, __LINE__));
 
 	Keyboard_ProcessEvents();
@@ -369,7 +389,7 @@ char Keyboard_GetChar(void)
 	} while (the_char == 0);
 
 	//DEBUG_OUT(("%s %d: key input=%x", __func__, __LINE__, the_char));
-	
+
 	return the_char;
 }
 
@@ -382,9 +402,9 @@ uint8_t Keyboard_GetKeyIfPressed(void)
 	{
 		return Keyboard_PopQueue();
 	}
-		
+
 	// process any outstanding events
 	Keyboard_ProcessEvents();
-	
+
 	return 0;
 }

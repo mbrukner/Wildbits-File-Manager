@@ -23,14 +23,17 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include "sys.h"
 // #include <ctype.h>
 // #include <limits.h>
 // #include <errno.h>
 // #include <unistd.h>
 // #include <fcntl.h>
 
-// F256 includes
-#include "f256.h"
+// WILDBITS includes
+#include "wildbits.h"
 
 
 /*****************************************************************************/
@@ -61,7 +64,7 @@
 
 	#ifndef USE_SERIAL_LOGGING
 		//static FILE*			global_log_file;
-		static int16_t			global_log_file_handle;
+		static int16_t			global_log_file_handle = -1;
 	#endif
 #endif
 
@@ -70,7 +73,7 @@
 /*****************************************************************************/
 
 
-#ifdef LOG_ERR
+#ifdef LOG_LEVEL_1
 const char *_null_err = "%s %d: passed class object was null";
 const char *_mark_selected_err = "%s %d: couldn't mark file '%s' as selected";
 const char *_allocate_memory_err = "%s %d: could not allocate memory";
@@ -114,44 +117,47 @@ const char *_allocate_memory_err = "%s %d: could not allocate memory";
 
 		// set UART chip to DLAB mode
 		void Serial_SetDLAB(void);
-	
+
 		// turn off DLAB mode on UART chip
 		void Serial_ClearDLAB(void);
-			
+
 		// set up UART for serial comms
 		void Serial_InitUART(void);
-		
+
 		// send 1-255 bytes to the UART serial connection
 		// returns # of bytes successfully sent (which may be less than number requested, in event of error, etc.)
-		uint8_t Serial_SendData(char* the_buffer, uint16_t buffer_size);
-		
+		uint16_t Serial_SendData(char* the_buffer, uint16_t buffer_size);
+
 		// send a byte over the UART serial connection
 		// if the UART send buffer does not have space for the byte, it will try for UART_MAX_SEND_ATTEMPTS then return an error
 		// returns false on any error condition
 		bool Serial_SendByte(uint8_t the_byte);
-		
-		
+
+
 		// set UART chip to DLAB mode
 		void Serial_SetDLAB(void)
 		{
 			R8(UART_LCR) = R8(UART_LCR) | UART_DLAB_MASK;
 		}
-		
+
 		// turn off DLAB mode on UART chip
 		void Serial_ClearDLAB(void)
 		{
 			R8(UART_LCR) = R8(UART_LCR) & (~UART_DLAB_MASK);
 		}
-			
+
 		// set up UART for serial comms
 		void Serial_InitUART(void)
 		{
-			R8(UART_LCR) = UART_DATA_BITS | UART_STOP_BITS | UART_PARITY | UART_NO_BRK_SIG;
+			uint8_t old_io = R8(MMU_IO_CTRL);
+            R8(MMU_IO_CTRL) = 0;
+            R8(UART_LCR) = UART_DATA_BITS | UART_STOP_BITS | UART_PARITY | UART_NO_BRK_SIG;
 			Serial_SetDLAB();
 			R16(UART_DLL) = UART_BAUD_DIV_115200;
 			Serial_ClearDLAB();
+            R8(MMU_IO_CTRL) = old_io;
 		}
-		
+
 		// send a byte over the UART serial connection
 		// if the UART send buffer does not have space for the byte, it will try for UART_MAX_SEND_ATTEMPTS then return an error
 		// returns false on any error condition
@@ -160,85 +166,90 @@ const char *_allocate_memory_err = "%s %d: could not allocate memory";
 			uint8_t		error_check;
 			bool		uart_in_buff_is_empty = false;
 			uint16_t	num_tries = 0;
-			
+
 			error_check = R8(UART_LSR) & UART_ERROR_MASK;
-			
+
 			if (error_check > 0)
 			{
 				goto error;
 			}
-			
+
 			while (uart_in_buff_is_empty == false && num_tries < UART_MAX_SEND_ATTEMPTS)
 			{
 				uart_in_buff_is_empty = R8(UART_LSR) & UART_THR_IS_EMPTY;
 				++num_tries;
 			};
-			
-			if (uart_in_buff_is_empty == true)
+
+			if (uart_in_buff_is_empty == false)
 			{
 				goto error;
 			}
-			
+
 			R8(UART_THR) = the_byte;
-			
+
 			return true;
-			
+
 			error:
 				return false;
 		}
-		
-		
+
+
 		// send 1-255 bytes to the UART serial connection
 		// returns # of bytes successfully sent (which may be less than number requested, in event of error, etc.)
-		uint8_t Serial_SendData(char* the_buffer, uint16_t buffer_size)
+		uint16_t Serial_SendData(char* the_buffer, uint16_t buffer_size)
 		{
 			uint16_t	i;
 			uint8_t		the_byte;
-			
+            uint8_t old_io = R8(MMU_IO_CTRL);
+            R8(MMU_IO_CTRL) = 0;
+
 			if (buffer_size > 256)
 			{
-				return 0;
+				R8(MMU_IO_CTRL) = old_io;
+                return 0;
 			}
-			
-			for (i=0; i <= buffer_size; i++)
+
+			for (i=0; i < buffer_size; i++)
 			{
 				the_byte = the_buffer[i];
-				
+
 				if (Serial_SendByte(the_byte) == false)
 				{
-					return i;
+					R8(MMU_IO_CTRL) = old_io;
+                    return i;
 				}
 			}
-			
+
 			// add a line return if we got this far
 			Serial_SendByte(0x0D);
-			
-			return i;
+
+			R8(MMU_IO_CTRL) = old_io;
+                    return i;
 		}
-		
-    
+
+
 	#endif
-	
+
 
 // DEBUG functionality I want:
 //   3 levels of logging (err/warn/info)
 //   additional debug out function that leaves no footprint in compiled release version of code (calls to it also disappear)
 //   able to pass format string and multiple variables when needed
 
-#ifdef LOG_LEVEL_1 
+#ifdef LOG_LEVEL_1
 	void General_LogError(const char* format, ...)
 	{
 		va_list		args;
 		uint16_t	the_len;
-		
+
 		va_start(args, format);
-		vsprintf(debug_varargs_buffer, format, args);
+		vsnprintf(debug_varargs_buffer, 240, format, args);
 		va_end(args);
-	
+
 		//fprintf(debug_log_file, "%s %s\n", kDebugFlag[LogError], debug_varargs_buffer);
 		sprintf(debug_out_buffer, "%s %s\n", kDebugFlag[LogError], debug_varargs_buffer);
 		the_len = strlen(debug_out_buffer);
-	
+
 		#if defined USE_SERIAL_LOGGING
 			Serial_SendData(debug_out_buffer, the_len);
 		#else
@@ -253,19 +264,19 @@ const char *_allocate_memory_err = "%s %d: could not allocate memory";
 	{
 		va_list		args;
 		uint16_t	the_len;
-		
+
 		va_start(args, format);
-		vsprintf(debug_varargs_buffer, format, args);
+		vsnprintf(debug_varargs_buffer, 240, format, args);
 		va_end(args);
-	
+
 		//fprintf(debug_log_file, "%s %s\n", kDebugFlag[LogWarning], debug_varargs_buffer);
 		sprintf(debug_out_buffer, "%s %s\n", kDebugFlag[LogWarning], debug_varargs_buffer);
 		the_len = strlen(debug_out_buffer);
-	
+
 		#if defined USE_SERIAL_LOGGING
 			Serial_SendData(debug_out_buffer, the_len);
 		#else
-			write(debug_log_file_handle, debug_out_buffer, the_len);
+			write(global_log_file_handle, debug_out_buffer, the_len);
 		#endif
 	}
 #endif
@@ -276,21 +287,21 @@ const char *_allocate_memory_err = "%s %d: could not allocate memory";
 	{
 		va_list		args;
 		uint16_t	the_len;
-		
+
 		va_start(args, format);
-		vsprintf(debug_varargs_buffer, format, args);
+		vsnprintf(debug_varargs_buffer, 240, format, args);
 		va_end(args);
-	
+
 		//fprintf(debug_log_file, "%s %s\n", kDebugFlag[LogInfo], debug_varargs_buffer);
 		sprintf(debug_out_buffer, "%s %s\n", kDebugFlag[LogInfo], debug_varargs_buffer);
 		the_len = strlen(debug_out_buffer);
-	
+
 		#if defined USE_SERIAL_LOGGING
 			Serial_SendData(debug_out_buffer, the_len);
 		#else
-			write(debug_log_file_handle, debug_out_buffer, the_len);
+			write(global_log_file_handle, debug_out_buffer, the_len);
 		#endif
-	}	
+	}
 #endif
 
 #ifdef LOG_LEVEL_4
@@ -298,19 +309,19 @@ const char *_allocate_memory_err = "%s %d: could not allocate memory";
 	{
 		va_list		args;
 		uint16_t	the_len;
-		
+
 		va_start(args, format);
-		vsprintf(debug_varargs_buffer, format, args);
+		vsnprintf(debug_varargs_buffer, 240, format, args);
 		va_end(args);
-		
+
 		//fprintf(debug_log_file, "%s %s\n", kDebugFlag[LogDebug], debug_varargs_buffer);
 		sprintf(debug_out_buffer, "%s %s\n", kDebugFlag[LogDebug], debug_varargs_buffer);
 		the_len = strlen(debug_out_buffer);
-	
+
 		#if defined USE_SERIAL_LOGGING
 			Serial_SendData(debug_out_buffer, the_len);
 		#else
-			write(debug_log_file_handle, debug_out_buffer, the_len);
+			write(global_log_file_handle, debug_out_buffer, the_len);
 		#endif
 	}
 #endif
@@ -320,19 +331,19 @@ const char *_allocate_memory_err = "%s %d: could not allocate memory";
 	{
 		va_list		args;
 		uint16_t	the_len;
-		
+
 		va_start(args, format);
-		vsprintf(debug_varargs_buffer, format, args);
+		vsnprintf(debug_varargs_buffer, 240, format, args);
 		va_end(args);
-		
+
 		//fprintf(debug_log_file, "%s %s\n", kDebugFlag[LogAlloc], debug_varargs_buffer);
 		sprintf(debug_out_buffer, "%s %s\n", kDebugFlag[LogAlloc], debug_varargs_buffer);
 		the_len = strlen(debug_out_buffer);
-	
+
 		#if defined USE_SERIAL_LOGGING
 			Serial_SendData(debug_out_buffer, the_len);
 		#else
-			write(debug_log_file_handle, debug_out_buffer, the_len);
+			write(global_log_file_handle, debug_out_buffer, the_len);
 		#endif
 	}
 #endif
@@ -351,27 +362,28 @@ bool General_LogInitialize(void)
 		//   linux/mac setup for using 'screen' command as terminal: screen /dev/tty.usbserial-FT53JP031 300,cs8,-ixon,-ixoff,-istrip,-parenb
 
 		Serial_InitUART();
+        Serial_SendData("Wildbits log started", 20);
 
 	#else
-		const char*		the_file_path = "0:fmanager_log.txt";
-	
+		const char*		the_file_path = "0:wildbits-fm.log";
+
 		//global_log_file = fopen( the_file_path, "w");
-		global_log_file_handle = open(the_file_path, O_WRONLY);
-		
-		if (global_log_file_handle < 1)
+		global_log_file_handle = open(the_file_path, O_WRONLY | O_CREAT | O_TRUNC);
+
+		if (global_log_file_handle < 0)
 		//if (global_log_file == NULL)
 		{
 			printf("General_LogInitialize: log file could not be opened! \n");
 			return false;
 		}
-		
+
 		#if defined USE_SERIAL_LOGGING
 			Serial_SendData("started log file", 16);
 		#else
 			write(global_log_file_handle, "started log file", 16);
 		#endif
 	#endif
-	
+
 	return true;
 }
 
@@ -381,7 +393,7 @@ void General_LogCleanUp(void)
 {
 	#if defined USE_SERIAL_LOGGING
 	#else
-		if (global_log_file_handle > 0)
+		if (global_log_file_handle >= 0)
 		//if (global_log_file != NULL)
 		{
 			close(global_log_file_handle);
@@ -402,40 +414,40 @@ void General_LogCleanUp(void)
 // 	//     so 60 rows * 16 bytes = 960 max bytes can be shown
 // 	//   we only need one buffer as we read and print to screen line by line (80 bytes)
 // 	//   we need to keep the file stream open until it is used up, or user exits loop
-// 
+//
 // 	uint8_t		y;
 // 	uint8_t		cut_off_pos;
 // 	uint16_t	num_bytes_to_read = MEM_DUMP_BYTES_PER_ROW;
-// 	uint8_t*	loc_in_file = 0x000;	// will track the location within the file, so we can show to users on left side. 
-// 
+// 	uint8_t*	loc_in_file = 0x000;	// will track the location within the file, so we can show to users on left side.
+//
 // 	cut_off_pos = MEM_DUMP_BYTES_PER_ROW * 3; // each char represented by 2 hex digits and a space
 // 	y = 0;
 // 	Text_ClearScreen(FILE_CONTENTS_FOREGROUND_COLOR, FILE_CONTENTS_BACKGROUND_COLOR);
-// 	sprintf(global_string_buff1, General_GetString(ID_STR_MSG_HEX_VIEW_INSTRUCTIONS), "Memory Dump");
+// 	snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, General_GetString(ID_STR_MSG_HEX_VIEW_INSTRUCTIONS), "Memory Dump");
 // 	Text_DrawStringAtXY(0, y++, global_string_buff1, FILE_CONTENTS_ACCENT_COLOR, FILE_CONTENTS_BACKGROUND_COLOR);
-// 				
+//
 // 	// loop until all screen rows used
 // 	do
 // 	{
-// 
-// 		sprintf(global_string_buff2, "%p: ", the_buffer);
+//
+// 		snprintf(global_string_buff2, STORAGE_STRING_BUFFER_2_LEN, "%p: ", the_buffer);
 // 		Text_DrawStringAtXY(0, y, global_string_buff2, FILE_CONTENTS_ACCENT_COLOR, FILE_CONTENTS_BACKGROUND_COLOR);
-// 	
-// 		sprintf(global_string_buff2, "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x  ", 
-// 			the_buffer[0], the_buffer[1], the_buffer[2], the_buffer[3], the_buffer[4], the_buffer[5], the_buffer[6], the_buffer[7], 
+//
+// 		snprintf(global_string_buff2, STORAGE_STRING_BUFFER_2_LEN, "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x  ",
+// 			the_buffer[0], the_buffer[1], the_buffer[2], the_buffer[3], the_buffer[4], the_buffer[5], the_buffer[6], the_buffer[7],
 // 			the_buffer[8], the_buffer[9], the_buffer[10], the_buffer[11], the_buffer[12], the_buffer[13], the_buffer[14], the_buffer[15]);
-// 		
+//
 // 		// cut off the string
 // 		global_string_buff2[cut_off_pos] = '\0';
-// 		
+//
 // 		Text_DrawStringAtXY(MEM_DUMP_START_X_FOR_HEX, y, global_string_buff2, FILE_CONTENTS_FOREGROUND_COLOR, FILE_CONTENTS_BACKGROUND_COLOR);
-// 
+//
 // 		// render chars with char draw function to avoid problem of 0s getting treated as nulls in sprintf
 // 		Text_DrawCharsAtXY(MEM_DUMP_START_X_FOR_CHAR, y, (uint8_t*)the_buffer, MEM_DUMP_BYTES_PER_ROW);
-// 	
+//
 // 		the_buffer += MEM_DUMP_BYTES_PER_ROW;
 // 		++y;
-// 	
+//
 // 	} while (y < MAX_TEXT_VIEW_ROWS_PER_PAGE);
 // }
 

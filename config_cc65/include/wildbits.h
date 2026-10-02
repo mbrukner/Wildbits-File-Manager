@@ -1,12 +1,12 @@
 /*
- * f256jr.h
+ * wildbits.h
  *
  *  Created on: November 29, 2022
  *      Author: micahbly
  */
 
-#ifndef F256JR_H_
-#define F256JR_H_
+#ifndef WILDBITS_JR_H_
+#define WILDBITS_JR_H_
 
 
 
@@ -28,7 +28,7 @@
 #define R16(x)						*((volatile uint16_t* const)(x))		// make sure we read an 16 bit byte; for RNG etc.
 
 
-// ** F256jr MMU
+// ** Wildbits MMU
 #define MMU_MEM_CTRL					0x0000	// bit 0-1: activate LUT (exit editing); 4-5 LUT to be edited; 7: activate edit mode
 #define MMU_IO_CTRL						0x0001	// bits 0-1: IO page; bit 2: disable IO
 
@@ -36,7 +36,7 @@
 #define BANK_KERNAL						0x07	// 0xe000-0xffff
 
 
-// ** F256jr - Tiny VICKY
+// ** Wildbits - Tiny VICKY
 
 #define TEXT_COL_COUNT_FOR_PLOTTING		80	// regardless of visible cols (between borders), VRAM is fixed at 80 cols across.
 #define TEXT_ROW_COUNT_FOR_PLOTTING		60	// regardless of visible rows (between borders), VRAM is fixed at 60 rows up/down.
@@ -88,7 +88,7 @@
 #define RANDOM_NUM_GEN_LOW				0xd6a4		// both the SEEDL and the RNDL (depends on bit 1 of RND_CTRL)
 #define RANDOM_NUM_GEN_HI				0xd6a5		// both the SEEDH and the RNDH (depends on bit 1 of RND_CTRL)
 #define RANDOM_NUM_GEN_ENABLE			0xd6a6		// bit 0: enable/disable. bit 1: seed mode on/off. "RND_CTRL"
-#define MACHINE_ID_REGISTER				0xd6a7		// will be '2' for F256JR
+#define MACHINE_ID_REGISTER				0xd6a7		// will be '2' for WILDBITS_JR
 #define TEXT_FORE_LUT					0xd800		// FG_CHAR_LUT_PTR	Text Foreground Look-Up Table
 #define TEXT_BACK_LUT					0xd840		// BG_CHAR_LUT_PTR	Text Background Look-Up Table
 
@@ -126,7 +126,7 @@
 // machine model numbers - for decoding s_sys_info.model - value read from MACHINE_ID_REGISTER (see above)
 #define MACHINE_C256_FMX		0	///< for s_sys_info.model
 #define MACHINE_C256_U			1	///< for s_sys_info.model
-#define MACHINE_F256_JR			2	///< for s_sys_info.model
+#define MACHINE_WILDBITS_JR			2	///< for s_sys_info.model
 #define MACHINE_C256_GENX		4	///< for s_sys_info.model
 #define MACHINE_C256_UPLUS		5	///< for s_sys_info.model
 #define MACHINE_A2560U_PLUS		6	///< for s_sys_info.model
@@ -200,4 +200,4 @@ typedef struct DateTime {
 
 
 
-#endif /* F256JR_H_ */
+#endif /* WILDBITS_JR_H_ */

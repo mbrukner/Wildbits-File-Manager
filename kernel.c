@@ -13,7 +13,7 @@
 #include "app.h"	// need for FILE_MAX_PATHNAME_SIZE
 #include "dirent.h"  // Users are expected to "-I ." to get the local copy.
 #include "general.h" // need for strnlen
-#include "f256.h"
+#include "wildbits.h"
 #include "keyboard.h"  // need for F1 key values
 
 #define VECTOR(member) (size_t) (&((struct call*) 0xff00)->member)
@@ -26,16 +26,16 @@
 
 
 #pragma bss-name (push, "KERNEL_ARGS")
-struct call_args args; // in gadget's version of f256 lib, this is allocated and initialized with &args in crt0. 
+struct call_args args; // in gadget's version of wildbits lib, this is allocated and initialized with &args in crt0.
 #pragma bss-name (pop)
 
 #pragma bss-name (push, "ZEROPAGE")
-struct event_t event; // in gadget's version of f256 lib, this is allocated and initialized with &event in crt0. 
+struct event_t event; // in gadget's version of wildbits lib, this is allocated and initialized with &event in crt0.
 char error;
 #pragma bss-name (pop)
 
 
-#define MAX_DRIVES 8
+#define MAX_DRIVES 4
 
 // Just hard-coded for now.
 #define MAX_ROW 60
@@ -51,7 +51,7 @@ static char row = 0;
 static char col = 0;
 static char *line = (char*) 0xc000;
 
- 
+
 void
 kernel_init(void)
 {
@@ -63,17 +63,17 @@ cls()
 {
     int i;
     char *vram = (char*)0xc000;
-    
+
     asm("lda #$02");
-    asm("sta $01");  
-    
+    asm("sta $01");
+
     for (i = 0; i < 80*60; i++) {
         *vram++ = 32;
     }
-    
+
     row = col = 0;
     line = (char*)0xc000;
-    
+
     asm("stz $1"); asm("lda #9"); asm("sta $d010");
     (__A__ = row, asm("sta $d016"), asm("stz $d017"));
     (__A__ = col, asm("sta $d014"), asm("stz $d015"));
@@ -86,10 +86,10 @@ scroll()
 {
     int i;
     char *vram = (char*)0xc000;
-    
+
     asm("lda #$02");
-    asm("sta $01");  
-    
+    asm("sta $01");
+
     for (i = 0; i < 80*59; i++) {
         vram[i] = vram[i+80];
     }
@@ -99,16 +99,16 @@ scroll()
     }
 }
 
-static void 
+static void
 out(char c)
 {
     switch (c) {
-    case 12: 
+    case 12:
         cls();
         break;
     default:
         asm("lda #2");
-        asm("sta $01");    
+        asm("sta $01");
         line[col] = c;
         col++;
         if (col != MAX_COL) {
@@ -126,37 +126,38 @@ out(char c)
         line += 80;
         break;
     }
-    
+
     asm("stz $01");
     (__A__ = row, asm("sta $d016"));
     (__A__ = col, asm("sta $d014"));
-}  
-    
+}
+
 char
 GETIN()
 {
     while (1) {
-        
+
         CALL(NextEvent);
-        
+        Keyboard_DeferBackgroundEvent();
+
         if (error) {
             asm("jsr %w", VECTOR(Yield));
             continue;
         }
-        
+
         if (event.type != EVENT(key.PRESSED)) {
             continue;
         }
-        
+
         if (event.key.flags) {
-        	// if a function key, return raw code.
-        	if (event.key.raw >= CH_F1 && event.key.raw <= CH_F8)
-        	{
-        		return event.key.raw;
-        	}
+            // if a function key, return raw code.
+            if (event.key.raw >= CH_F1 && event.key.raw <= CH_F8)
+            {
+                return event.key.raw;
+            }
             continue;  // Meta key.
         }
-        
+
         return event.key.ascii;
     }
 }
@@ -167,18 +168,19 @@ GETIN()
 bool Kernal_AnyKeyEvent()
 {
     while (1) {
-        
+
         CALL(NextEvent);
-        
+        Keyboard_DeferBackgroundEvent();
+
         if (error) {
             asm("jsr %w", VECTOR(Yield));
             return false;
         }
-        
+
         if (event.type == EVENT(key.PRESSED)) {
             return true;
         }
-        
+
         return false;
     }
 }
@@ -187,19 +189,21 @@ static const char *
 path_without_drive(const char *path, char *drive)
 {
     *drive = 0;
-    
+
     if (strlen(path) < 2) {
         return path;
     }
-    
+
     if (path[1] != ':') {
         return path;
     }
-    
-    if ((*path >= '0') && (*path <= '7')) {
+
+    if ((*path >= '0') && (*path <= '3')) {
         *drive = *path - '0';
+    } else {
+        *drive = MAX_DRIVES;
     }
-        
+
     return (path + 2);
 }
 
@@ -208,13 +212,14 @@ open(const char *fname, int mode, ...)
 {
     int ret = 0;
     char drive;
-    
+
     fname = path_without_drive(fname, &drive);
-    
+    if (drive >= MAX_DRIVES || strlen(fname) > 255) return -1;
+
     args.common.buf = (uint8_t*) fname;
     args.common.buflen = strlen(fname);
     args.file.open.drive = drive;
-    if (mode == 1) {
+    if ((mode & (O_RDONLY | O_WRONLY)) == O_RDONLY) {
         mode = 0;
     } else {
         mode = 1;
@@ -224,37 +229,38 @@ open(const char *fname, int mode, ...)
     if (error) {
         return -1;
     }
-    
+
     for(;;) {
         event.type = 0;
         asm("jsr %w", VECTOR(NextEvent));
+        Keyboard_DeferBackgroundEvent();
         switch (event.type) {
         case EVENT(file.OPENED):
-            return ret;
+            return ret + 3;
         case EVENT(file.NOT_FOUND):
         case EVENT(file.ERROR):
             return -1;
         default:
-        	continue;
+            continue;
         }
     }
 }
 
-static int 
+static int
 Kernel_Read(int fd, void *buf, uint16_t nbytes)
 {
-    
+
     if (fd == 0) {
         // stdin
         *(char*)buf = GETIN();
         return 1;
     }
-    
+
     if (nbytes > 255) {
         nbytes = 255;
     }
-    
-    args.file.read.stream = fd;
+
+    args.file.read.stream = fd - 3;
     args.file.read.buflen = nbytes;
     CALL(File.Read);
     if (error) {
@@ -264,6 +270,7 @@ Kernel_Read(int fd, void *buf, uint16_t nbytes)
     for(;;) {
         event.type = 0;
         asm("jsr %w", VECTOR(NextEvent));
+        Keyboard_DeferBackgroundEvent();
         switch (event.type) {
         case EVENT(file.DATA):
             args.common.buf = buf;
@@ -277,34 +284,35 @@ Kernel_Read(int fd, void *buf, uint16_t nbytes)
             return 0;
         case EVENT(file.ERROR):
             return -1;
-        default: 
-        	continue;
+        default:
+            continue;
         }
     }
 }
 
-int 
+int
 read(int fd, void *buf, uint16_t nbytes)
 {
     char *data = buf;
     int  gathered = 0;
-    
+
     // fread should be doing this, but it isn't, so we're doing it.
     while (gathered < nbytes) {
         int returned = Kernel_Read(fd, data + gathered, nbytes - gathered);
-        if (returned <= 0) {
+        if (returned < 0) return -1;
+        if (returned == 0) {
             break;
         }
         gathered += returned;
     }
-    
+
     return gathered;
 }
 
 static int
 kernel_write(uint8_t fd, void *buf, uint8_t nbytes)
 {
-    args.file.read.stream = fd;
+    args.file.read.stream = fd - 3;
     args.common.buf = buf;
     args.common.buflen = nbytes;
     CALL(File.Write);
@@ -315,6 +323,7 @@ kernel_write(uint8_t fd, void *buf, uint8_t nbytes)
     for(;;) {
         event.type = 0;
         asm("jsr %w", VECTOR(NextEvent));
+        Keyboard_DeferBackgroundEvent();
         if (event.type == EVENT(file.WROTE)) {
             return event.file.data.delivered;
         }
@@ -324,16 +333,16 @@ kernel_write(uint8_t fd, void *buf, uint8_t nbytes)
     }
 }
 
-int 
+int
 write(int fd, const void *buf, uint16_t nbytes)
 {
     uint8_t  *data = buf;
     int      total = 0;
-    
+
     uint8_t  writing;
     int      written;
-    
-    if (fd == 1) {
+
+    if (fd == 1 || fd == 2) {
         int i;
         char *text = (char*) buf;
         for (i = 0; i < nbytes; i++) {
@@ -341,24 +350,24 @@ write(int fd, const void *buf, uint16_t nbytes)
         }
         return i;
     }
-    
+
     while (nbytes) {
-        
+
         if (nbytes > 254) {
             writing = 254;
         } else {
             writing = nbytes;
         }
-        
+
         written = kernel_write(fd, data+total, writing);
         if (written <= 0) {
             return -1;
         }
-        
+
         total += written;
         nbytes -= written;
     }
-        
+
     return total;
 }
 
@@ -366,11 +375,14 @@ write(int fd, const void *buf, uint16_t nbytes)
 int
 close(int fd)
 {
-    args.file.close.stream = fd;
-    asm("jsr %w", VECTOR(File.Close));
+    if (fd < 3) return 0;
+    args.file.close.stream = fd - 3;
+    CALL(File.Close);
+    if (error) return -1;
     for(;;) {
         event.type = 0;
         asm("jsr %w", VECTOR(NextEvent));
+        Keyboard_DeferBackgroundEvent();
         switch (event.type) {
         case EVENT(file.CLOSED):
                 return 0;
@@ -379,18 +391,18 @@ close(int fd)
         default: continue;
         }
     }
-    
+
     return 0;
 }
 
 
-   
+
 ////////////////////////////////////////
 // dirent
 
 static char dir_stream[MAX_DRIVES];
 
-DIR* __fastcall__ 
+DIR* __fastcall__
 Kernel_OpenDir(const char* name)
 {
     char drive, stream;
@@ -398,16 +410,17 @@ Kernel_OpenDir(const char* name)
 // out(name[0]);
 // out(name[1]);
 // out(name[2]);
-    
+
     name = path_without_drive(name, &drive);
+    if (drive >= MAX_DRIVES || strlen(name) > 255) return NULL;
 //out(48+drive);
 // out(48+(uint8_t)strlen(name));
-   
+
     if (dir_stream[drive]) {
 //out(64);
         return NULL;  // Only one at a time.
     }
-    
+
     args.directory.open.drive = drive;
     args.common.buf = name;
     args.common.buflen = strlen(name);
@@ -418,10 +431,11 @@ Kernel_OpenDir(const char* name)
         return NULL;
     }
 //out(67); // C
-    
+
     for(;;) {
         event.type = 0;
         asm("jsr %w", VECTOR(NextEvent));
+        Keyboard_DeferBackgroundEvent();
         if (event.type == EVENT(directory.OPENED)) {
 //out(68); // D
             break;
@@ -431,54 +445,57 @@ Kernel_OpenDir(const char* name)
             return NULL;
         }
     }
-    
+
     dir_stream[drive] = stream;
 //out(70); // F
     return (DIR*) &dir_stream[drive];
 }
 
-struct dirent* __fastcall__ 
+struct dirent* __fastcall__
 Kernel_ReadDir(DIR* dir)
 {
     static struct dirent dirent;
-    
+
     if (!dir) {
         return NULL;
     }
-    
+
     args.directory.read.stream = *(char*)dir;
     CALL(Directory.Read);
     if (error) {
         return NULL;
     }
-    
+
     for(;;) {
-        
+
         unsigned len;
-        
+
         event.type = 0;
         asm("jsr %w", VECTOR(NextEvent));
-        
+        Keyboard_DeferBackgroundEvent();
+
         switch (event.type) {
-        
+
         case EVENT(directory.VOLUME):
-            
+
             dirent.d_blocks = 0;
             dirent.d_type = 2;
             break;
-            
-        case EVENT(directory.FILE): 
-            
-            // common.ext isn't returning expected values. i think it's not meant to be used for reading like this. 
-           	 	//args.common.ext = &dirent.d_blocks;
-				// args.common.extlen = sizeof(dirent.d_blocks) + 6; // 6 to pick up the 6 bytes of date info
-			// common.buf returns blocks, 2 bytes of 0s, then a filename, looks like maybe the last-read file's filename. probably just junk from previous event. 
-			args.common.buf = &dirent.d_blocks;
-			args.common.buflen = sizeof(dirent.d_blocks) + 6; // 6 to pick up the 6 bytes of date info
-			CALL(ReadExt);
-			dirent.d_type = (dirent.d_blocks == 0);
+
+        case EVENT(directory.FILE):
+
+            // common.ext isn't returning expected values. i think it's not meant to be used for reading like this.
+                //args.common.ext = &dirent.d_blocks;
+                // args.common.extlen = sizeof(dirent.d_blocks) + 6; // 6 to pick up the 6 bytes of date info
+            // common.buf returns blocks, 2 bytes of 0s, then a filename, looks like maybe the last-read file's filename. probably just junk from previous event.
+            dirent.d_blocks = 0;
+            args.common.buf = &dirent.d_blocks;
+            args.common.buflen = 3; // 6 to pick up the 6 bytes of date info
+            CALL(ReadExt);
+            dirent.d_type = ((char*)dir - dir_stream <= DEVICE_INTERNAL_SD) ?
+                ((event.directory.file.flags & 0x10) != 0) : (dirent.d_blocks == 0);
             break;
-                
+
         case EVENT(directory.FREE):
             // dirent doesn't care about these types of records.
             args.directory.read.stream = *(char*)dir;
@@ -487,53 +504,49 @@ Kernel_ReadDir(DIR* dir)
                 continue;
             }
             // Fall through.
-        
+
         case EVENT(directory.EOFx):
         case EVENT(directory.ERROR):
             return NULL;
-            
+
         default: continue;
         }
-        
+
         // Copy the name.
         len = event.directory.file.len;
         if (len >= sizeof(dirent.d_name)) {
             len = sizeof(dirent.d_name) - 1;
         }
-            
+
         if (len > 0) {
             args.common.buf = &dirent.d_name;
             args.common.buflen = len;
             CALL(ReadData);
         }
         dirent.d_name[len] = '\0';
-                
+
         return &dirent;
     }
 }
-    
-    
-int __fastcall__ 
+
+
+int __fastcall__
 Kernel_CloseDir (DIR* dir)
 {
-    if (!dir) {
-        return -1;
-    }
-    
-    for(;;) {
-        if (*(char*)dir) {
-            args.directory.close.stream = *(char*)dir;
-            CALL(Directory.Close);
-            if (!error) {
-                *(char*)dir = 0;
-            }
-        }
+    if (!dir || !*(char*)dir) return -1;
+    args.directory.close.stream = *(char*)dir;
+    CALL(Directory.Close);
+    if (error) return -1;
+    for (;;) {
         event.type = 0;
-        asm("jsr %w", VECTOR(NextEvent));
+        CALL(NextEvent);
+        Keyboard_DeferBackgroundEvent();
+        if (error) { asm("jsr %w", VECTOR(Yield)); continue; }
         if (event.type == EVENT(directory.CLOSED)) {
             *(char*)dir = 0;
             return 0;
         }
+        if (event.type == EVENT(directory.ERROR)) return -1;
     }
 }
 
@@ -543,8 +556,9 @@ Kernel_CloseDir (DIR* dir)
 bool __fastcall__ Kernel_DeleteFile(const char* name)
 {
     char drive, stream;
-    
+
     name = path_without_drive(name, &drive);
+    if (drive >= MAX_DRIVES || strlen(name) > 255) return false;
     args.file.delete.drive = drive;
     args.common.buf = name;
     args.common.buflen = strlen(name);
@@ -552,10 +566,11 @@ bool __fastcall__ Kernel_DeleteFile(const char* name)
     if (error) {
         return false;
     }
-    
+
     for(;;) {
         event.type = 0;
         asm("jsr %w", VECTOR(NextEvent));
+        Keyboard_DeferBackgroundEvent();
         if (event.type == EVENT(file.DELETED)) {
             break;
         }
@@ -563,7 +578,7 @@ bool __fastcall__ Kernel_DeleteFile(const char* name)
             return false;
         }
     }
-    
+
     return true;
 }
 
@@ -572,8 +587,9 @@ bool __fastcall__ Kernel_DeleteFile(const char* name)
 bool __fastcall__ Kernel_DeleteFolder(const char* name)
 {
     char drive, stream;
-    
+
     name = path_without_drive(name, &drive);
+    if (drive >= MAX_DRIVES || strlen(name) > 255) return false;
     args.file.delete.drive = drive;
     args.common.buf = name;
     args.common.buflen = strlen(name);
@@ -581,10 +597,11 @@ bool __fastcall__ Kernel_DeleteFolder(const char* name)
     if (error) {
         return false;
     }
-    
+
     for(;;) {
         event.type = 0;
         asm("jsr %w", VECTOR(NextEvent));
+        Keyboard_DeferBackgroundEvent();
         if (event.type == EVENT(directory.DELETED)) {
             break;
         }
@@ -592,23 +609,24 @@ bool __fastcall__ Kernel_DeleteFolder(const char* name)
             return false;
         }
     }
-    
+
     return true;
 }
 
 
-int __fastcall__ 
+int __fastcall__
 rename(const char* name, const char *to)
 {
     char drive, stream, dest;
-    
+
     name = path_without_drive(name, &drive);
+    if (drive >= MAX_DRIVES || strlen(name) > 255) return -1;
     to = path_without_drive(to, &dest);
-    if (dest != drive) {    
+    if (dest >= MAX_DRIVES || dest != drive || strlen(to) > 255) {
         // rename across drives is not supported.
         return -1;
     }
-    
+
     args.file.delete.drive = drive;
     args.common.buf = name;
     args.common.buflen = strlen(name);
@@ -618,10 +636,11 @@ rename(const char* name, const char *to)
     if (error) {
         return -1;
     }
-    
+
     for(;;) {
         event.type = 0;
         asm("jsr %w", VECTOR(NextEvent));
+        Keyboard_DeferBackgroundEvent();
         if (event.type == EVENT(file.RENAMED)) {
             break;
         }
@@ -629,31 +648,33 @@ rename(const char* name, const char *to)
             return -1;
         }
     }
-    
+
     return 0;
 }
 
 
 // wrapper to mkfs
 //   pass the name you want for the formatted disk/SD card in name, and the drive number (0-2) in the drive param.
-//   do NOT prepend the path onto name. 
+//   do NOT prepend the path onto name.
 // return negative number on any error
 int __fastcall__
 mkfs(const char* name, const char drive)
 {
-	char stream;
-	
-	args.file.delete.drive = drive;
+    char stream;
+
+    if (drive >= MAX_DRIVES || strlen(name) > 255) return -1;
+    args.file.delete.drive = drive;
     args.common.buf = name;
     args.common.buflen = strlen(name);
     stream = CALL(FileSystem.MkFS);
     if (error) {
         return -2;
     }
-    
+
     for(;;) {
         event.type = 0;
         asm("jsr %w", VECTOR(NextEvent));
+        Keyboard_DeferBackgroundEvent();
         if (event.type == EVENT(fs.CREATED)) {
             break;
         }
@@ -661,8 +682,8 @@ mkfs(const char* name, const char drive)
             return -3;
         }
     }
-    
-    return 0;	
+
+    return 0;
 }
 
 
@@ -671,53 +692,54 @@ mkfs(const char* name, const char drive)
 bool Kernal_MkDir(char* the_path, uint8_t drive_num)
 {
     char stream;
-    
-    the_path += 2;	// get past 0:, 1:, 2:, etc. 
+
+    the_path += 2;	// get past 0:, 1:, 2:, etc.
 
     args.directory.mkdir.drive = drive_num;
     //args.directory.mkdir.path = the_path;
-    //args.directory.mkdir.path_len = General_Strnlen(the_path, FILE_MAX_PATHNAME_SIZE) + 1;
+    //args.directory.mkdir.path_len = General_Strnlen(the_path, FILE_MAX_PATHNAME_SIZE);
     args.common.buf = the_path;
-    args.common.buflen = General_Strnlen(the_path, FILE_MAX_PATHNAME_SIZE) + 1;
+    args.common.buflen = General_Strnlen(the_path, FILE_MAX_PATHNAME_SIZE);
     //args.directory.mkdir.cookie = 126; // NOT HANDLING THIS CURRENTLY. FUTURE: PROVIDE A COOKIE AND USE IT TO TRACK COMPLETION?
 
     stream = CALL(Directory.MkDir);
-    
+
     if (error)
     {
         return false;
     }
-    
+
     for(;;) {
         event.type = 0;
         asm("jsr %w", VECTOR(NextEvent));
+        Keyboard_DeferBackgroundEvent();
         if (event.type == EVENT(directory.CREATED)) {
             break;
         }
-        if (event.type == EVENT(file.ERROR)) {
+        if (event.type == EVENT(directory.ERROR)) {
             return false;
         }
     }
-    
+
     return true;
 }
 
 // Directory.MkDir
-// 
+//
 // Creates a sub-directory.
-// 
+//
 // Input
-// 
+//
 // kernel.args.directory.mkdir.drive contains the device id (0 = SD, 1 = IEC #8, 2 = IEC #9).
 // kernel.args.directory.mkdir.path points to a buffer containing the path.
 // kernel.args.directory.mkdir.path_len contains the length of the path above. May be zero for the root directory.
 // kernel.args.directory.mkdir.cookie contains a user-supplied cookie for matching the completed event.
 // Output
-// 
+//
 // Carry cleared on success.
 // Carry set on error (device not found, kernel out of event or stream objects).
 // Events
-// 
+//
 // On successful completion, the kernel will queue an event.directory.CREATED event.
 // On error, the kernel will queue an event.directory.ERROR event.
 // In either case, event.directory.cookie will contain the above cookie.
@@ -730,11 +752,11 @@ void Kernal_RunNamed(char* kup_name, uint8_t name_len)
 {
     char			stream;
 
-	args.common.buf = kup_name;
-	args.common.buflen = name_len;
+    args.common.buf = kup_name;
+    args.common.buflen = name_len;
 
-	stream = CALL(RunNamed);
-    
+    stream = CALL(RunNamed);
+
     return; // just so cc65 is happy; but will not be hit in event of success as SuperBASIC will already be running.
 }
 
@@ -745,58 +767,62 @@ bool Kernal_LoadApp(char* the_app_path, char* the_file_path)
 {
     char		stream;
     uint8_t		path_len;
-	
-	// LOGIC:
-	// kernel.args.buf needs to have name of named app to run, which in this case is '-' (pexec's real name)
-	// we also need to prep a different buffer with a series of pointers (2), one of which points to a string for '-', one for the app (e.g, 'modojr.pgz', and optionally one for the file the called up app should load (e.g., 'mymodfile.mod')
-	// We have from $200 to $27f to use for the paths
-	//   Because we only have 128 chars for all 3 paths (126 after pexec), the max len of either path is 62 (NULL terminators eat a space)
-	// The pointers to the path components start at $280.
-	// we set arg0 to pexec ('-'), arg1 to the path of the app to load, and arg2, if passed, to the path of the file to load
-	
-	args.common.buf = (char*)0x0200;	// tell Kernel which buffer to work with
-	args.common.buflen = 2;
-	args.common.ext = (char*)0x0280;	// tell Kernel where the arg pointers start and how many there are
-	args.common.extlen = 6;				// if no file for called app to load. will change if necessary.
-	
-	
-	//  arg0: pexec "-"
-	*(uint8_t*)0x0200 = '-';
-	*(uint8_t*)0x0201 = 0;
-	*(uint8_t*)0x0280 = 0x00;	// set pointer to arg0
-	*(uint8_t*)0x0281 = 0x02;	// first arg (pexec '-') is at $0200
-	
-	// arg1: path to file for pexec to load
-	path_len = General_Strnlen(the_app_path, MAX_PEXEC_APP_PATH_LEN) + 1;
-	General_Strlcpy((char*)0x0202, the_app_path, path_len);
-	*(uint8_t*)0x0282 = 0x02;	// set pointer to arg1
-	*(uint8_t*)0x0283 = 0x02;	// 2nd arg (the app path) is at $0202
-	*(uint8_t*)0x0284 = 0x00;	// terminator (will be overwritten if there is a file to load)
-	
-	// arg2: path to the file you want the called up app to load, if any
-	if (the_file_path != NULL)
-	{
-		path_len = General_Strnlen(the_file_path, MAX_PEXEC_FILE_PATH_LEN) + 1;
-		General_Strlcpy((char*)0x0242, the_file_path, path_len);
-		*(uint8_t*)0x0284 = 0x42;	// set pointer to arg2
-		*(uint8_t*)0x0285 = 0x02;	// 3rd arg (the file path) is at $0242
-		*(uint8_t*)0x0286 = 0x00;	// terminator
-		args.common.extlen = 8;		// let Kernel know we have 8 bytes / 4 pointers for it to look at.
-	}
+    if (strlen(the_app_path) > MAX_PEXEC_APP_PATH_LEN ||
+        (the_file_path && strlen(the_file_path) > MAX_PEXEC_FILE_PATH_LEN)) return false;
 
-	stream = CALL(RunNamed);
-    
-    if (error) 
+    // LOGIC:
+    // kernel.args.buf needs to have name of named app to run, which in this case is '-' (pexec's real name)
+    // we also need to prep a different buffer with a series of pointers (2), one of which points to a string for '-', one for the app (e.g, 'modojr.pgz', and optionally one for the file the called up app should load (e.g., 'mymodfile.mod')
+    // We have from $200 to $27f to use for the paths
+    //   Because we only have 128 chars for all 3 paths (126 after pexec), the max len of either path is 62 (NULL terminators eat a space)
+    // The pointers to the path components start at $280.
+    // we set arg0 to pexec ('-'), arg1 to the path of the app to load, and arg2, if passed, to the path of the file to load
+
+    args.common.buf = (char*)0x0200;	// tell Kernel which buffer to work with
+    args.common.buflen = 2;
+    args.common.ext = (char*)0x0280;	// tell Kernel where the arg pointers start and how many there are
+    args.common.extlen = 6;				// if no file for called app to load. will change if necessary.
+
+
+    //  arg0: pexec "-"
+    *(uint8_t*)0x0200 = '-';
+    *(uint8_t*)0x0201 = 0;
+    *(uint8_t*)0x0280 = 0x00;	// set pointer to arg0
+    *(uint8_t*)0x0281 = 0x02;	// first arg (pexec '-') is at $0200
+
+    // arg1: path to file for pexec to load
+    path_len = General_Strnlen(the_app_path, MAX_PEXEC_APP_PATH_LEN) + 1;
+    General_Strlcpy((char*)0x0202, the_app_path, path_len);
+    *(uint8_t*)0x0282 = 0x02;	// set pointer to arg1
+    *(uint8_t*)0x0283 = 0x02;	// 2nd arg (the app path) is at $0202
+    *(uint8_t*)0x0284 = 0x00;
+    *(uint8_t*)0x0285 = 0x00;	// terminator (will be overwritten if there is a file to load)
+
+    // arg2: path to the file you want the called up app to load, if any
+    if (the_file_path != NULL)
+    {
+        path_len = General_Strnlen(the_file_path, MAX_PEXEC_FILE_PATH_LEN) + 1;
+        General_Strlcpy((char*)0x0242, the_file_path, path_len);
+        *(uint8_t*)0x0284 = 0x42;	// set pointer to arg2
+        *(uint8_t*)0x0285 = 0x02;	// 3rd arg (the file path) is at $0242
+        *(uint8_t*)0x0286 = 0x00;
+        *(uint8_t*)0x0287 = 0x00;	// terminator
+        args.common.extlen = 8;		// let Kernel know we have 8 bytes / 4 pointers for it to look at.
+    }
+
+    stream = CALL(RunNamed);
+
+    if (error)
     {
         return false;
     }
-    
+
     return true; // just so cc65 is happy; but will not be hit in event of success as pexec will already be running.
 }
 
 
 // Input
-// • kernel.args.buf points to a buffer containing the name of the program to run. 
+// • kernel.args.buf points to a buffer containing the name of the program to run.
 // • kernel.args.buflen contains the length of the name.
 // Output
 // • On success, the call doesn’t return.
@@ -805,16 +831,16 @@ bool Kernal_LoadApp(char* the_app_path, char* the_file_path)
 // • The name match is case-insensitive.
 
 
-//https://github.com/FoenixRetro/Documentation/blob/main/f256/programming-developing.md
+//(see original repository history)
 
 // Parameter Passing
-// 
+//
 // Although not part of the kernel specification, a standardized method of passing commandline arguments to programs exists.
-// 
+//
 // Both DOS and SuperBASIC are able to pass arguments to the program to run, and pexec is also able to pass any further arguments after the filename on to the program. As an example, /- program.pgz hello in SuperBASIC would start pexec with the parameters -, program.pgz, and hello. pexec would then load program.pgz, and start it with the parameters program.pgz and hello.
-// 
+//
 // Arguments are passed in the ext and extlen kernel arguments. This approach is suitable for passing arguments through the RunNamed and RunBlock kernel functions, and is also used by pexec when starting a PGX or PGZ program.
-// 
+//
 // ext will contain an array of pointers, one for each argument given on the commandline. The first pointer is the program name itself. The list is terminated with a null pointer. extlen contains the length in bytes of the array, less the null pointer. For instance, if two parameters are passed, extlen will be 4.
-// 
+//
 // pexec reserves $200-$2FF for parameters - programs distributed in the PGX and PGZ formats should therefore load themselves no lower than $0300, if they want to access commandline parameters. If they do not use the commandline parameters, they may load themselves as low as $0200.

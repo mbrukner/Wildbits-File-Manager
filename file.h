@@ -4,7 +4,7 @@
  *  Created on: Sep 5, 2020
  *      Author: micahbly
  *
- *  This is a huge cut-down of the Amiga WorkBench2000 code, for F256 f/manager and B128 f/manager
+ *  This is a huge cut-down of the Amiga WorkBench2000 code, for WILDBITS Wildbits File Manager and B128 Wildbits File Manager
  *    8-bit version started Jan 12, 2023
  */
 
@@ -32,9 +32,11 @@
 #include "app.h"
 
 #include <stdint.h>
+extern uint16_t global_file_bytes_loaded;
+extern uint16_t global_file_load_limit;
 #include <stdbool.h>
 
-#include "f256.h"
+#include "wildbits.h"
 
 /*****************************************************************************/
 /*                            Macro Definitions                              */
@@ -43,7 +45,7 @@
 #define PARAM_FILE_IS_FOLDER			true	// File_New() parameter
 #define PARAM_FILE_IS_NOT_FOLDER		false	// File_New() parameter
 
-#define FILE_MAX_EXTENSION_SIZE			8		// probably larger than needed, but... 
+#define FILE_MAX_EXTENSION_SIZE			8		// probably larger than needed, but...
 
 
 /*****************************************************************************/
@@ -63,7 +65,7 @@ typedef struct WB2KFileObject
 	bool				selected_;
 	uint8_t				panel_id_;			// need this so we can know which EM bank the filename is stored in.
 	uint8_t				id_;				// id_ is set once, when populating, and used as key for filenames, etc.
-	uint8_t				file_type_;			// F256jr... do what with this??
+	uint8_t				file_type_;			// Wildbits... do what with this??
 	uint8_t				x_;
 	uint8_t				row_;				// row_ is relative to the first file in the folder. changes on sort.
 	int8_t				display_row_;		// offset from the first displayed row of parent panel. -1 if not to be visible.
@@ -92,7 +94,6 @@ WB2KFileObject* File_New(uint8_t the_panel_id, const char* the_file_name, bool i
 
 // duplicator
 // makes a copy of the passed file object
-WB2KFileObject* File_Duplicate(WB2KFileObject* the_original_file);
 
 // destructor
 // frees all allocated memory associated with the passed object, and the object itself

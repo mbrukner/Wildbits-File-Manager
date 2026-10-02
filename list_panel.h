@@ -4,7 +4,7 @@
  *  Created on: Sep 4, 2020
  *      Author: micahbly
  *
- *  This is a huge cut-down of the Amiga WorkBench2000 code, for F256 f/manager and B128 f/manager
+ *  This is a huge cut-down of the Amiga WorkBench2000 code, for WILDBITS Wildbits File Manager and B128 Wildbits File Manager
  *    8-bit version started Jan 12, 2023
  */
 
@@ -68,7 +68,7 @@ typedef struct WB2KViewPanel
 	uint8_t				height_;
 	uint8_t				num_rows_;							// for any mode, number of rows used
 	uint8_t				content_top_;						// for column mode, need to track our own content top position
-	device_number		device_number_;						// For F256, 0/1/2 for disk devices, 8/9 for ram/flash
+	device_number		device_number_;						// For WILDBITS, 0/1/2 for disk devices, 8/9 for ram/flash
 // 	int8_t				drive_index_;						// reference to index to global_connected_device array. -1 if no device.
 // 	uint8_t				col_width_[PANEL_LIST_NUM_COLS];	// for list mode, the widths of each column. Can vary by window width
 // 	uint8_t				col_highest_visible_;				// the last column that should be rendered by File_RenderLabel
@@ -144,10 +144,10 @@ bool Panel_OwnsX(WB2KViewPanel* the_panel, int16_t x);
 // // if a folder is under the mouse, it will set that folder as the global drop target
 // // returns true if any folder is under the mouse pointer
 // bool Panel_CheckForMouseOverFolder(WB2KViewPanel* the_panel, MouseTracker* the_mouse, bool highlight_if_folder);
-// 
+//
 // // check to see if an already-selected file is under the mouse pointer
 // bool Panel_CheckForAlreadySelectedIconUnderMouse(WB2KViewPanel* the_panel, MouseTracker* the_mouse_tracker);
-// 
+//
 // // check to see if any files were selected at the coordinates passed.
 // // returns 0 if nothing selected, 1 if 1 file, 2 if multiple files, or 3 if one folder (using enums)
 // IconSelectionResult Panel_CheckForMouseSelection(WB2KViewPanel* the_panel, MouseTracker* the_mouse_tracker, bool do_selection, bool highlight_if_folder);
@@ -199,12 +199,12 @@ void Panel_ClearDisplay(WB2KViewPanel* the_panel);
 void Panel_RenderContents(WB2KViewPanel* the_panel);
 
 // sorts the file list by date/name/etc, then calls the panel to renew its view.
-// TODO: consider adding a boolean "do reflow". 
+// TODO: consider adding a boolean "do reflow".
 void Panel_SortAndDisplay(WB2KViewPanel* the_panel);
 
 // fill the currently selected memory bank with a value supplied by the user
 bool Panel_FillCurrentBank(WB2KViewPanel* the_panel);
-	
+
 // fill the currently selected memory bank with zeros
 bool Panel_ClearCurrentBank(WB2KViewPanel* the_panel);
 

@@ -8,7 +8,7 @@
  */
 
 // This is a cut-down, semi-API-compatible version of the OS/f general.c file from Lich King (Foenix)
-// adapted for Foenix F256 Jr starting November 29, 2022
+// adapted for Foenix WILDBITS Jr starting November 29, 2022
 
 
 #ifndef GENERAL_H_
@@ -58,8 +58,8 @@
 #define MAX_STRING_COMP_LEN		192		//!< 255 + terminator is max string size for compares
 
 // word-wrap and string measurement related
-#define GEN_NO_STRLEN_CAP		-1		//!< for the xxx_DrawString function's max_chars parameter, the value that corresponds to 'draw the entire string if it fits, do not cap it at n characters' 
-#define WORD_WRAP_MAX_LEN		192	//!< For the xxx_DrawStringInBox function, the strnlen char limit. 40*25. 
+#define GEN_NO_STRLEN_CAP		-1		//!< for the xxx_DrawString function's max_chars parameter, the value that corresponds to 'draw the entire string if it fits, do not cap it at n characters'
+#define WORD_WRAP_MAX_LEN		192	//!< For the xxx_DrawStringInBox function, the strnlen char limit. 40*25.
 
 
 
@@ -116,7 +116,7 @@ int32_t General_Round(double the_float);
 
 // **** NUMBER<>STRING UTILITIES *****
 
-// // convert a file size in bytes to a human readable format using "10 bytes", "1.4 kb", "1 MB", etc. 
+// // convert a file size in bytes to a human readable format using "10 bytes", "1.4 kb", "1 MB", etc.
 // //   NOTE: formatted_file_size string must have been allocated before passing here
 // void General_MakeFileSizeReadable(unsigned long size_in_bytes, char* formatted_file_size);
 
@@ -163,7 +163,6 @@ signed long General_Strlcpy(char* dst, const char* src, signed long max_len);
 //! @param	dst: The string to append to. Calling function is responsible for ensuring this string is allocated, and has at least as much storage as max_len.
 //! @param	max_len: The maximum number of bytes to use in the destination string, including the terminator. If this is shorter than the length of src + length of dst + 1, the resulting copy string will be capped at max_len - 1.
 //! @return	Returns the length of the attempted concatenated string: initial length of dst plus the length of src.
-signed long General_Strlcat(char* dst, const char* src, signed long max_len);
 
 //! Makes a case sensitive comparison of the specified number of characters of the two passed strings
 //! Stops processing once max_len has been reached, or when one of the two strings has run out of characters.
@@ -212,7 +211,7 @@ signed long General_Strnlen(const char *the_string, size_t max_len);
 // char* General_ExtractFilenameFromPathWithAlloc(const char* the_file_path);
 
 // populates the passed string by safely combining the passed file path and name, accounting for cases where path is a disk root
-void General_CreateFilePathFromFolderAndFile(char* the_combined_path, char* the_folder_path, char* the_file_name);
+bool General_CreateFilePathFromFolderAndFile(char* the_combined_path, char* the_folder_path, char* the_file_name);
 
 // // return the first char of the last part of a file path
 // // if no path part detected, returns the original string
@@ -220,12 +219,12 @@ void General_CreateFilePathFromFolderAndFile(char* the_combined_path, char* the_
 // // amigaDOS compatibility function (see FilePart)
 // char* General_NamePart(const char* the_file_path);
 
-// return everything to the left of the filename in a path. 
+// return everything to the left of the filename in a path.
 char* General_PathPart(const char* the_file_path);
 
 //! Extract file extension into the passed char pointer, as new lowercased string pointer, if any found.
 //! @param	the_file_name: the file name to extract an extension from
-//! @param	the_extension: a pre-allocated buffer that will contain the extension, if any is detected. Must be large enough to hold the extension! No bounds checking is done. 
+//! @param	the_extension: a pre-allocated buffer that will contain the extension, if any is detected. Must be large enough to hold the extension! No bounds checking is done.
 //! @return	Returns false if no file extension found.
 bool General_ExtractFileExtensionFromFilename(const char* the_file_name, char* the_extension);
 
@@ -237,10 +236,9 @@ bool General_ExtractFileExtensionFromFilename(const char* the_file_name, char* t
 
 //! Wait for the specified number of ticks before returning
 //! In PET/B128 implementation, we don't bother with real ticks.
-void General_DelayTicks(uint16_t ticks);
 
 // //! Wait for the specified number of seconds before returning
-// //! In multi-tasking ever becomes a thing, this is not a multi-tasking-friendly operation. 
+// //! In multi-tasking ever becomes a thing, this is not a multi-tasking-friendly operation.
 // void General_DelaySeconds(uint16_t seconds);
 
 

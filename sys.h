@@ -8,7 +8,7 @@
  */
 
 // THIS IS A CUT-DOWN VERSION OF the OS/f lib_sys.h file, just enough to power Lich King
-// adapted for Foenix F256 Jr starting November 29, 2022
+// adapted for Foenix WILDBITS Jr starting November 29, 2022
 
 
 
@@ -21,15 +21,15 @@
  * This provides overall system level functionality
  *
  *** things this library needs to be able to do
- * Manage global system resources such as fonts, screens, mouse pointer, etc. 
+ * Manage global system resources such as fonts, screens, mouse pointer, etc.
  * Provide event handling
  *
  * STRETCH GOALS
- * 
+ *
  *
  * SUPER STRETCH GOALS
- * 
- * 
+ *
+ *
  */
 
 
@@ -46,7 +46,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "f256.h"
+#include "wildbits.h"
 
 
 /*****************************************************************************/
@@ -86,15 +86,15 @@ typedef struct System
 	uint8_t			model_number_;
 	uint8_t			text_cols_vis_;		// accounting for borders, the number of visible columns on screen
 	uint8_t			text_rows_vis_;		// accounting for borders, the number of visible rows on screen
-	uint8_t			text_mem_cols_;		// for the current resolution, the total number of columns per row in VRAM. Use for plotting x,y 
-	uint8_t			text_mem_rows_;		// for the current resolution, the total number of rows per row in VRAM. Use for plotting x,y 
+	uint8_t			text_mem_cols_;		// for the current resolution, the total number of columns per row in VRAM. Use for plotting x,y
+	uint8_t			text_mem_rows_;		// for the current resolution, the total number of rows per row in VRAM. Use for plotting x,y
 // 	uint8_t*		text_ram_;
 // 	uint8_t*		text_attr_ram_;
 // 	uint8_t*		text_font_ram_;			// 2K of memory holding font definitions.
 // 	uint8_t*		text_color_fore_ram_;	// 64b of memory holding foreground color LUTs for text mode, in BGRA order
 // 	uint8_t*		text_color_back_ram_;	// 64b of memory holding background color LUTs for text mode, in BGRA order
 #ifdef FEATURE_BITMAP
-	int16_t			screen_width_;			// for the current resolution, the max horizontal pixel count 
+	int16_t			screen_width_;			// for the current resolution, the max horizontal pixel count
 	int16_t			screen_height_;			// for the current resolution, the max vertical pixel count
 	Bitmap*			bitmap_;			//! The foreground (layer0=0) and background (layer1=1) bitmaps associated with this screen, if any. (Text only screens do not have bitmaps available)
 #endif
@@ -129,11 +129,11 @@ bool Sys_InitSystem(void);
 //! Find out what kind of machine the software is running on, and configure the passed screen accordingly
 //! Configures screen settings, RAM addresses, etc. based on known info about machine types
 //! Configures screen width, height, total text rows and cols, and visible text rows and cols by checking hardware
-//! @return	Returns false if the machine is known to be incompatible with this software. 
+//! @return	Returns false if the machine is known to be incompatible with this software.
 bool Sys_AutoConfigure(void);
 
 //! Find out what kind of machine the softw`are is running on, and determine # of screens available
-//! @return	Returns false if the machine is known to be incompatible with this software. 
+//! @return	Returns false if the machine is known to be incompatible with this software.
 bool Sys_AutoDetectMachine(void);
 
 //! Detect the current screen mode/resolution, and set # of columns, rows, H pixels, V pixels, accordingly
@@ -220,8 +220,8 @@ void Sys_SwitchFontSet(bool use_primary_font);
 // disable the I/O bank to allow RAM to be mapped into it
 // current MMU setting is saved to the 6502 stack
 void Sys_DisableIOBank(void);
-// #define Sys_DisableIOBank(); 	asm("pha"); asm("lda $01"); asm("sta %b", ZP_OLD_IO_PAGE); asm("lda #$04"); asm("sta $01"); asm("pla"); 
-// MB: experimented with replacing this function call with a macro, but it actually increased usage slightly. 
+// #define Sys_DisableIOBank(); 	asm("pha"); asm("lda $01"); asm("sta %b", ZP_OLD_IO_PAGE); asm("lda #$04"); asm("sta $01"); asm("pla");
+// MB: experimented with replacing this function call with a macro, but it actually increased usage slightly.
 
 // change the I/O page
 void Sys_SwapIOPage(uint8_t the_page_number);

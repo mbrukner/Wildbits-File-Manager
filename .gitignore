@@ -58,3 +58,7 @@ build_vbcc/
 .DS_Store
 screenlog.0
 __micahs_notes_on_mac-foenix_connection.txt
+
+.venv/
+__pycache__/
+*.pyc

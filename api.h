@@ -3,7 +3,7 @@
  *   Oberreuter <joberreu@moselle.com>. As with the Linux Kernel Exception to
  *   the GPL3, programs built to run on the MicroKernel are expected to
  *   include this file. Doing so does not effect their license status.
- * 
+ *
  *  Kernel Calls Populate the kernel.arg.* variables appropriately, and then
  *  JSR to one of the velctors below:
  */
@@ -18,16 +18,16 @@
 #define TIMER_QUERY 128
 
 struct call {  // Mount at $ff00
-    
+
     long NextEvent;      // Copy the next event into user-space.
     long ReadData;       // Copy primary bulk event data into user-space
     long ReadExt;        // Copy secondary bolk event data into user-space
     long Yield;          // Give unused time to the kernel.
     long Putch;          // deprecated
-    long RunBlock;       // 
+    long RunBlock;       //
     long RunNamed;       //
     long reserved;
-    
+
     struct {
         long List;       // Returns a bit-set of available block-accessible devices.
         long GetName;    // Gets the hardware level name of the given block device or media.
@@ -37,7 +37,7 @@ struct call {  // Mount at $ff00
         long Format;     // Perform a low-level format if the media support it.
         long Export;     // Update the FileSystem table with the partition table (if present).
     } BlockDevice;
-    
+
     struct {
         long List;       // Returns a bit-set of available logical devices.
         long GetSize;    // Get the size of the partition or logical device in sectors.
@@ -48,8 +48,8 @@ struct call {  // Mount at $ff00
         long ReadBlock;  // Read a partition-local raw sector on an unmounted device.
         long WriteBlock; // Write a partition-local raw sector on an unmounted device.
     } FileSystem;
-    
-    struct { 
+
+    struct {
         long Open;       // Open the given file for read, create, or append.
         long Read;       // Request bytes from a file opened for reading.
         long Write;      // Write bytes to a file opened for create or append.
@@ -58,7 +58,7 @@ struct call {  // Mount at $ff00
         long Delete;     // Delete a closed file.
         long Seek;       // Set the next read/write position within an open file.
     } File;
-    
+
     struct {
         long Open;       // Open a directory for reading.
         long Read;       // Read a directory entry; may also return VOLUME and FREE events.
@@ -66,9 +66,9 @@ struct call {  // Mount at $ff00
         long MkDir;      // Create a new directory.
         long RmDir;      // Deletes an existing directory.
     } Directory;
-    
-    long gate;    
-    
+
+    long gate;
+
     struct {
         long GetIP;      // Get the local IP address.
         long SetIP;      // Set the local IP address.
@@ -76,30 +76,30 @@ struct call {  // Mount at $ff00
         long SetDNS;     // Set the configured DNS IP address.
         long SendICMP;   // Send an ICMP packet (typically a ping).
         long Match;      // Determine if the current event matches a specific socket.
-        
+
         struct {
             long Init;   // Initialize a 32 byte UDP socket structure.
             long Send;   // Send data via the supplied UDP socket structure.
             long Recv;   // Copy the UDP payload from the event to the user's address space.
         } UDP;
-        
+
         struct {
             long Open;   // Initialize a 256 byte TCP structure for a specified destination.
-            long Accept; // Initialize a 256 byte TCP structure from a received SYN packet. 
+            long Accept; // Initialize a 256 byte TCP structure from a received SYN packet.
             long Reject; // Reply to a received TCP packet with a REJECT message.
             long Send;   // Accept some new data and send an ACK along with any unACK'd data.
             long Recv;   // Copy any new TCP bytes into the user's buf and update the socket state.
-            long Close;  // 
+            long Close;  //
         } TCP;
     };
-    
+
     struct {
         long Reset;      // Re-init the display.
         long GetSize;    // Returns rows/cols in kernel args.
         long DrawRow;    // Draw text/color buffers left-to-right
         long DrawColumn; // Draw text/color buffers top-to-bottom
     } Display;
-    
+
     struct {
         long GetTime;    // Get the date+time in BCD: YY,YY,MM,DD,HH,MM,SS,cS
         long SetTime;    //
@@ -123,13 +123,13 @@ struct common_t {
     uint8_t       buflen;
     void *        internal;
 };
-    
+
 struct fs_mkfs_t {
     uint8_t  drive;
     uint8_t  cookie;
     // label = common.buf; label_len = common.buflen
 };
-    
+
 struct fs_t {
     union {
         struct fs_mkfs_t  format;
@@ -280,17 +280,17 @@ struct events {
     uint16_t deprecated;
     uint16_t JOYSTICK;    // joystick events
     uint16_t DEVICE;      // deprecated
-    
+
     struct {
         uint16_t PRESSED;
         uint16_t RELEASED;
     } key;
-    
+
     struct {
         uint16_t DELTA;
         uint16_t CLICKS;
     } mouse;
-    
+
     struct {
         uint16_t NAME;
         uint16_t SIZE;
@@ -299,7 +299,7 @@ struct events {
         uint16_t FORMATTED;
         uint16_t ERROR;
     } block;
-    
+
     struct {
         uint16_t SIZE;
         uint16_t CREATED;
@@ -308,7 +308,7 @@ struct events {
         uint16_t WROTE;
         uint16_t ERROR;
     } fs;
-    
+
     struct {
         uint16_t NOT_FOUND;
         uint16_t OPENED;
@@ -321,7 +321,7 @@ struct events {
         uint16_t ERROR;
         uint16_t SEEK;
     } file;
-    
+
     struct {
         uint16_t OPENED;
         uint16_t VOLUME;
@@ -333,22 +333,22 @@ struct events {
         uint16_t CREATED;
         uint16_t DELETED;
     } directory;
-    
+
     struct {
         uint16_t TCP;
         uint16_t UDP;
     } net;
-    
+
     struct {
 		uint16_t EXPIRED;
 	} timer;
-    
+
     struct {
         uint16_t TICK;
     } clock;
 };
 
-                 
+
 struct event_timer_t {
     uint8_t value;
     uint8_t cookie;

@@ -1,36 +1,43 @@
-# f/manager F256
+# Wildbits File Manager
 
-## Overview
+A dual-panel file and memory manager for Wildbits, using the banked 65C02 memory map and MicroKernel API.
 
-f/manager is a dual-panel file and memory manager for the [Foenix F256jr and F256K retro computers](http://wiki.f256foenix.com/index.php?title=Main_Page). If you do not own a Foenix computer, or if you don't know what one is, this software should have limited interest for you. Go back now before you are sucked into the world of programming and using 8-bit and 16-bit computers as if it was the 1980s. You have been warned. 
+| Key / drive | Device |
+| --- | --- |
+| `0` / `0:` | External SD card |
+| `1` / `1:` | Internal micro SD card |
+| `2` / `2:` | IEC device 8 |
+| `3` / `3:` | IEC device 9 |
+| `8` | RAM banks |
+| `9` | Flash banks (read only) |
 
-If you are a brand new F256 owner, congratulations on your purchase, and welcome to exciting world of retro-computing... without retrobrite!
+Browse, sort, copy, rename and delete files; create directories; view text and hex; launch programs; inspect, copy and search memory banks; and set the clock. Directory copies are not recursive.
 
-![Main Screen](documentation/main_screen.png)
+## Build
 
-### Features
+Use Python 3 and the official **cc65 V2.19** source release. Set `CC65_HOME` to its checkout after building its tools (`make -j4 bin`). That release identifies itself as V2.18. Newer compilers generate helpers absent from the inherited runtime library, so use the pinned version for this baseline.
 
-- View and sort the directory of your SD card, and up to 2 connected IEC devices (Commodore-format serial disk drives such as the 1541, 1571, 1581, FNX1591, or FNX1592). 
-- Format floppy disks and SD cards
-- Create subdirectories on SD cards
-- Navigate through subdirectories
-- Copy files from one place on a disk, to another place
-- Copy files from one device to another
-- Rename files
-- Delete files
-- View a file as text (including word-wrap)
-- View a fix as hex
-- Launch applications
-- Launch files that have known helper applications - images, basic programs, mods, etc.
-- View a "directory" of the RAM banks or flash memory banks of your computer
-- Load a file from disk into a location in memory of your choosing
-- Save a bank (8192 bytes) of memory to a file on disk
-- Fill a bank of memory with a byte value you choose
-- Find text strings and strings of hex digits in memory
-- Set the real-time clock on your F256
-- Shortcut to switch to DOS or SuperBASIC at any time
+```sh
+CC65_HOME=/path/to/cc65 ./build.sh
+CC65_HOME=/path/to/cc65 ./build.sh --debug
+```
 
-## User Guide
+The release output is `build_cc65/release/wildbits-fm.pgz`; the same directory contains a ZIP, linker map, labels, and an eight-bank KUP image. The debug build enables UART error logging at 115200 baud and has substantially less free heap. Building does not access hardware.
 
-- [Installing the f/manager](documentation/installing.md)
-- [Using the f/manager](documentation/using.md)
+## Verification
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r tests/requirements.txt
+CC65_HOME=/path/to/cc65 .venv/bin/python -m unittest discover -s tests -v
+```
+
+Tests need a host C compiler with AddressSanitizer and UndefinedBehaviorSanitizer. They exercise portable application functions and execute the native text/MMU routines in a 65C02 emulator with modeled I/O. They do not emulate the complete machine or its disk devices. Hardware validation is still required.
+
+See [installation](documentation/installing.md), [usage](documentation/using.md), and the [review record](documentation/review.md).
+
+## History and credit
+
+This fork preserves Micah Bly's original file manager and Martin Brukner's local debugging changes. The original MIT license and author credits remain intact. The GitHub fork relationship and `upstream` remote retain the source lineage; `local/debug-checkpoint` preserves the local changes before this review.
+
+Development lives at [mbrukner/Wildbits-File-Manager](https://github.com/mbrukner/Wildbits-File-Manager). The reviewed C/assembly baseline is the reference for the subsequent assembler conversion.

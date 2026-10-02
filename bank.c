@@ -33,8 +33,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-// F256 includes
-#include "f256.h"
+// WILDBITS includes
+#include "wildbits.h"
 
 
 /*****************************************************************************/
@@ -103,7 +103,7 @@ void Bank_Init(FMBankObject* the_bank, const char* the_name, const char* the_des
 			goto error;
 		}
 		LOG_ALLOC(("%s %d:	__ALLOC__	the_bank->name_	%p	size	%li", __func__ , __LINE__, the_bank->name_, General_Strnlen(the_bank->name_, FILE_MAX_FILENAME_SIZE) + 1));
-	
+
 		if ( (the_bank->description_ = General_StrlcpyWithAlloc(the_description, FILE_MAX_FILENAME_SIZE)) == NULL)
 		{
 			//Buffer_NewMessage("could not allocate memory for the bank description");
@@ -148,7 +148,15 @@ void Bank_Init(FMBankObject* the_bank, const char* the_name, const char* the_des
 	return;
 
 error:
-	if (the_bank) Bank_Reset(the_bank);
+	if (the_bank) {
+        Bank_Reset(the_bank);
+        the_bank->name_ = bank_non_kup_name;
+        the_bank->description_ = bank_non_kup_description;
+        the_bank->is_kup_ = false;
+        the_bank->row_ = the_row;
+        the_bank->bank_num_ = the_bank_num;
+        the_bank->addr_ = (uint32_t)the_bank_num * 8192;
+    }
 	DEBUG_OUT(("%s %d: bank %02x: error happened during allocation", __func__ , __LINE__, the_bank_num));
 	return;
 }
@@ -193,9 +201,9 @@ void Bank_Reset(FMBankObject* the_bank)
 // 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return;
 // 	}
-// 	
+//
 // 	the_bank->selected_ = selected;
-// 
+//
 // 	return;
 // }
 
@@ -208,7 +216,7 @@ void Bank_UpdatePos(FMBankObject* the_bank, uint8_t x, int8_t display_row, uint1
 		//LOG_ERR((_null_err, __func__ , __LINE__));
 		return;
 	}
-	
+
 	the_bank->x_ = x;
 	the_bank->display_row_ = display_row;
 	the_bank->row_ = row;
@@ -252,19 +260,19 @@ void Bank_Fill(FMBankObject* the_bank, uint8_t the_fill_value)
 {
 	uint8_t		i;
 	char*		the_buffer = (char*)STORAGE_FILE_BUFFER_1;
-	
+
 	// LOGIC:
 	//   bank is made up of 64 pages of 256b
 	//   to fill, we set the desired value in the interbank copy buff, then do 64 copy ops
 
 	memset(the_buffer, the_fill_value, STORAGE_FILE_BUFFER_1_LEN);
-	
+
 	for (i = 0; i < PAGES_PER_BANK; i++)
 	{
 		App_EMDataCopy((uint8_t*)the_buffer, the_bank->bank_num_, i, PARAM_COPY_TO_EM);
 	}
-	
-	sprintf(global_string_buff1, General_GetString(ID_STR_MSG_BANK_FILLED_WITH), the_bank->bank_num_, the_fill_value, the_fill_value);
+
+	snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, General_GetString(ID_STR_MSG_BANK_FILLED_WITH), the_bank->bank_num_, the_fill_value, the_fill_value);
 	Buffer_NewMessage(global_string_buff1);
 }
 
@@ -279,27 +287,27 @@ int16_t Bank_AskForFillValue(void)
 	bool				success;
 	bool				take_char_value = false;
 
-	General_Strlcpy((char*)&global_dlg_title, General_GetString(ID_STR_DLG_FILL_BANK_TITLE), COMM_BUFFER_MAX_STRING_LEN);
+	General_Strlcpy((char*)&global_dlg_title, General_GetString(ID_STR_DLG_FILL_BANK_TITLE), sizeof(global_dlg_title));
 	General_Strlcpy((char*)&global_dlg_body_msg, General_GetString(ID_STR_DLG_FILL_BANK_BODY), APP_DIALOG_WIDTH);
 	global_string_buff2[0] = 0;	// clear whatever string had been in this buffer before
-	
+
 	success = Text_DisplayTextEntryDialog(&global_dlg, (char*)&temp_screen_buffer_char, (char*)&temp_screen_buffer_attr, global_string_buff2, 3, APP_ACCENT_COLOR, APP_FOREGROUND_COLOR, APP_BACKGROUND_COLOR); //len("255")=3
-	
+
 	// did user enter a value?
 	if (success == false)
 	{
 		return -1;
 	}
-	
-	// user entered a number or a char, use that to fill. 
-	
+
+	// user entered a number or a char, use that to fill.
+
 	// LOGIC
 	//   if first char user entered is '0' - '9', convert the string to a number.
-	//   otherwise, use the first char's byte value as the fill. 
+	//   otherwise, use the first char's byte value as the fill.
 	//   in other words, if user enters "255", fill with FF. If user enters "aBc", fill with "a"
-	
+
 	the_len = General_Strnlen(global_string_buff2, 3);
-	
+
 	// loop through each char, stopping on the first one that isn't a number.
 	for (i = 0; i < the_len; i++)
 	{
@@ -313,7 +321,7 @@ int16_t Bank_AskForFillValue(void)
 			continue;
 		}
 	}
-	
+
 	// take the value of the first character entered as the fill value? if not, check if over 255.
 	if (take_char_value)
 	{
@@ -323,7 +331,7 @@ int16_t Bank_AskForFillValue(void)
 	{
 		the_fill_value = 255;
 	}
-	
+
 // 	// did we already give up and assign a fill value based on first char? if not, convert the number
 // 	if (the_fill_value == 0)
 // 	{
@@ -338,9 +346,9 @@ int16_t Bank_AskForFillValue(void)
 // 	{
 // 		DEBUG_OUT(("%s %d: fill=%i / %c (first letter accepted as fill val)", __func__ , __LINE__, the_fill_value, the_fill_value));
 // 	}
-// 	
+//
 // 	DEBUG_OUT(("%s %d: fill=%i, digits=%u,%u,%u", __func__ , __LINE__, the_fill_value, number_digits[0], number_digits[1], number_digits[2]));
-	
+
 	return (int16_t)the_fill_value;
 }
 
@@ -408,11 +416,11 @@ void Bank_Render(FMBankObject* the_bank, bool as_selected, int8_t y_offset, bool
 	uint8_t	typex;
 	uint8_t	the_color;
 	int8_t	y;
-	
+
 	// LOGIC:
 	//   Panel is responsible for having flowed the content in a way that each bank either has a displayable display_row_ value, or -1.
 	//   y_offset is the first displayable row of the parent panel
-	
+
 	if (the_bank == NULL)
 	{
 		//LOG_ERR((_null_err, __func__ , __LINE__));
@@ -427,27 +435,27 @@ void Bank_Render(FMBankObject* the_bank, bool as_selected, int8_t y_offset, bool
 	{
 		the_color = LIST_INACTIVE_COLOR;
 	}
-	
+
 	x1 = the_bank->x_;
 	x2 = the_bank->x_ + (UI_PANEL_INNER_WIDTH - 1);
 	typex = x1 + UI_PANEL_BANK_NUM_OFFSET + 1;
 	sizex = typex + UI_PANEL_BANK_ADDR_OFFSET + 0; // "bytes" is 5 in len, but we are using 6 digit size, so start one before bytes.
-	
+
 	if (the_bank->display_row_ != -1)
 	{
-		sprintf(global_string_buff1, "%06lX", the_bank->addr_);
+		snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, "%06lX", the_bank->addr_);
 		y = the_bank->display_row_ + y_offset;
 		Text_FillBox(x1, y, x2, y, CH_SPACE, the_color, APP_BACKGROUND_COLOR);
 		Text_DrawStringAtXY( x1, y, the_bank->name_, the_color, APP_BACKGROUND_COLOR);
 		Text_DrawStringAtXY( sizex, y, global_string_buff1, the_color, APP_BACKGROUND_COLOR);
-		sprintf(global_string_buff1, "%02X", the_bank->bank_num_);
+		snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, "%02X", the_bank->bank_num_);
 		Text_DrawStringAtXY( typex, y, global_string_buff1, the_color, APP_BACKGROUND_COLOR);
-		
+
 		if (as_selected == true)
 		{
 			Text_SetXY(x1, y);
-			Text_Invert(UI_PANEL_INNER_WIDTH);		
-				
+			Text_Invert(UI_PANEL_INNER_WIDTH);
+
 			// show description of the bank in the special status line under the bank panels, above the comms
 			Text_FillBox( 0, UI_FULL_PATH_LINE_Y, 79, UI_FULL_PATH_LINE_Y, CH_SPACE, APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);
 			Text_DrawStringAtXY( 0, UI_FULL_PATH_LINE_Y, the_bank->description_, COLOR_GREEN, APP_BACKGROUND_COLOR);
@@ -464,7 +472,7 @@ void Bank_Render(FMBankObject* the_bank, bool as_selected, int8_t y_offset, bool
 // void Bank_Print(void* the_payload)
 // {
 // 	FMBankObject*		this_file = (FMBankObject*)(the_payload);
-// 
+//
 // 	DEBUG_OUT(("|%-34s|%-1i|%-12lu|%-10s|%-8s|", App_GetFilenameFromEM(this_file->id_), this_file->selected_, this_file->size_, this_file->datetime_.dat_StrDate, this_file->datetime_.dat_StrTime));
 // }
 
@@ -475,7 +483,7 @@ void Bank_Render(FMBankObject* the_bank, bool as_selected, int8_t y_offset, bool
 // {
 // 	FMBankObject*		file_1 = (FMBankObject*)first_payload;
 // 	FMBankObject*		file_2 = (FMBankObject*)second_payload;
-// 
+//
 // 	if (General_Strncasecmp(file_1->file_name_, file_2->file_name_, FILE_MAX_FILENAME_SIZE) > 0)
 // 	{
 // 		return true;

@@ -12,7 +12,7 @@
 
 /* about this class: FMBankObject
  *
- *  This class holds functions and properties related to viewing and manipulating individual banks of system memory, including extended memory, on the F256
+ *  This class holds functions and properties related to viewing and manipulating individual banks of system memory, including extended memory, on the WILDBITS
  *
  *** things this class needs to be able to do
  *
@@ -31,7 +31,7 @@
  * Address (20-bit)
  * BankNum (0-127)
  * flag to indicate whether or not it can be executed
- * 
+ *
  *
  */
 
@@ -42,7 +42,7 @@
 
 #include "app.h"
 
-#include "f256.h"
+#include "wildbits.h"
 
 /*****************************************************************************/
 /*                            Macro Definitions                              */
@@ -73,11 +73,11 @@ typedef enum bank_type
 typedef struct FMBankObject
 {
 	bool				is_kup_;
-	uint8_t				bank_num_;			// 0-127, it's location within F256 MMU. 64+ are flash, 0-63 are RAM
+	uint8_t				bank_num_;			// 0-127, it's location within WILDBITS MMU. 64+ are flash, 0-63 are RAM
 	bool				selected_;
 	uint8_t				x_;
 	int8_t				display_row_;		// offset from the first displayed row of parent panel. -1 if not to be visible.
-	uint8_t				row_;				// row_ is relative to the first bank in the memory system. 
+	uint8_t				row_;				// row_ is relative to the first bank in the memory system.
 	uint32_t			addr_;				// 20-bit address in physical system memory 00 0000 - FF FFFF
 	char*				name_;				// system-generated if not a KUP bank
 	char*				description_;		// system-generated if not a KUP bank

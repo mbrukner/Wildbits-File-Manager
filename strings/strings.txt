@@ -30,9 +30,9 @@
 28	7	b BASIC
 29	5	d DOS
 30	10	  DEVICE  
-31	9	0 SD Card
-32	10	1 Floppy 1
-33	10	2 Floppy 2
+31	8	0 Ext SD
+32	7	2 IEC 8
+33	7	3 IEC 9
 34	5	8 RAM
 35	7	9 Flash
 36	8	" Format
@@ -112,7 +112,7 @@
 110	21	Unable to delete file
 111	26	Unable to delete directory
 112	40	We don't need no stinkin' error messages
-113	75	No connected devices were detected. f/manager will probably die of boredom.
+113	60	No drives detected. RAM and flash browsing remain available.
 114	16	The disk is full
 115	21	A disk error occurred
 116	33	No disk detected in disk drive %u
@@ -124,16 +124,17 @@
 122	142	No text editor was found. To open .txt files, install a text editor at '/_apps/textedit.pgz'. mless is an example of a compatible text editor.
 123	146	No MIDI player was found. To load .mid files, install a MIDI player at '/_apps/midiplayer.pgz'. midisam is an example of a compatible MIDI player.
 124	141	No mod player was found. To load .mod files, install a mod player at '/_apps/modplayer.pgz'. modojr is an example of a compatible mod player.
-125	173	No player was found. To load .mp3, .ogg, and .wav files, install a suitable audio player at '/_apps/audioplayer.pgz'. F256amp.pgz is an example of a compatible audio player.
+125	69	No audio player found. Install a player at '0:_apps/audioplayer.pgz'.
 126	150	No VGM player was found. To load .vgm files, install a VGM player at '/_apps/vgmplayer.pgz'. opl3snooper.pgz is an example of a compatible VGM player.
-127	163	No raw SID player was found. To load .rsd files, install a raw SID player at '/_apps/rsdplayer.pgz'. rawsidplayer.pgz is an example of a compatible raw SID player.
+127	72	No raw SID player found. Install a player at '0:_apps/rawsidplayer.pgz'.
 128	19	Out of memory error
-129	46	https://github.com/WartyMN/F256jr-FileManager/
-130	97	F256 hardware design %c2024 Stefany Allaire. FPGA %02X%02X.%02X%02X.%02X%02X, PCB %02X%02X '%c%c'
-131	75	F256 MicroKernel %c20%c%c Jessie Oberreuter. Build %c%c, 20%c%c-%c%c-%c%c. 
+129	49	https://github.com/mbrukner/Wildbits-File-Manager
+130	90	Hardware design %c2024 Stefany Allaire. FPGA %02X%02X.%02X%02X.%02X%02X, PCB %02X%02X %c%c
+131	69	MicroKernel %c20%c%c Jessie Oberreuter. Build %c%c, 20%c%c-%c%c-%c%c.
 132	42	Compact pexec loader for flash by dwsJason
-133	36	F256 SuperBASIC %c2023 Paul Robson. 
-134	50	F256 f/manager %c2025 Micah Bly. Version %u.%ub%u.
-135	6	F256JR
-136	5	F256K
+133	30	SuperBASIC %c2023 Paul Robson.
+134	57	Wildbits File Manager %c2025 Micah Bly. Version %u.%ub%u.
+135	8	Wildbits
+136	8	Wildbits
 137	18	<unknown hardware>
+138	8	1 Int SD

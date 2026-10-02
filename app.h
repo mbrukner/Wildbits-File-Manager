@@ -7,7 +7,7 @@
  *  A pseudo commander-style 2-column file manager
  *
  */
- 
+
 #ifndef FILE_MANAGER_H_
 #define FILE_MANAGER_H_
 
@@ -36,7 +36,7 @@
 
 // hide __fastcall_ from everything but CC65 (to squash some warnings in LSP/BBEdit)
 #ifndef __CC65__
-	#define __fastcall__ 
+	#define __fastcall__
 #endif
 
 #ifndef NULL
@@ -63,8 +63,8 @@
 #define APP_DIALOG_BUFF_SIZE				((APP_DIALOG_WIDTH+2) * (APP_DIALOG_HEIGHT+2))	// for the temp char and color buffs when opening a window, this is how much mem we'll reserve for each
 
 #define FILE_MAX_FILENAME_SIZE_CBM	(16+1)	// CBM DOS defined
-#define FILE_MAX_FILENAME_SIZE		(31+1)	// in F256 kernel, total path can't be longer than 255 chars.
-#define FILE_MAX_PATHNAME_SIZE		(255)	// in F256 kernel, total path can't be longer than 255 chars.
+#define FILE_MAX_FILENAME_SIZE		(31+1)	// in WILDBITS kernel, total path can't be longer than 255 chars.
+#define FILE_MAX_PATHNAME_SIZE		(255)	// in WILDBITS kernel, total path can't be longer than 255 chars.
 #define FILE_MAX_APPFILE_INFO_SIZE	255		// for info panel display about mime/app type, the max # of bytes to display
 #define FILE_MAX_TEXT_PREVIEW_SIZE	255		// for info panel previews, the max # of bytes to read in and display
 #define FILE_TYPE_MAX_SIZE_NAME		4	// mostly PRG/REL, but allowed for SUBD
@@ -72,16 +72,15 @@
 #define FILE_BYTES_PER_BLOCK_IEC	254	// for CBM DOS, 1 block = 256b but really only 254
 #define FILE_BYTES_PER_BLOCK		256	// for FAT32, 1 block = 256b
 #define MAX_NUM_FILES_IEC			144 // The directory track should be contained totally on track 18. Sectors 1-18 contain the entries and sector 0 contains the BAM (Block Availability Map) and disk name/ID. Since the directory is only 18 sectors large (19 less one for the BAM), and each sector can contain only 8 entries (32 bytes per entry), the maximum number of directory entries is 18 * 8 = 144. http://justsolve.archiveteam.org/wiki/CBMFS
-// BUT... 1581 supported 296 entries. hmm. 
+// BUT... 1581 supported 296 entries. hmm.
 
 
 #define DEVICE_LOWEST_DEVICE_NUM	0
-//#define DEVICE_HIGHEST_DEVICE_NUM	0	// use only if you are building for blackboard K2 with x2 FPGA: it has bug that doesn't support IEC and causes lockup when IEC bus is scanned by kernel. 
-#define DEVICE_HIGHEST_DEVICE_NUM	2	// 0=sd card, 1=IEC8, 2=IEC9. 
+#define DEVICE_HIGHEST_DEVICE_NUM 3 // 0: external SD, 1: internal micro SD, 2: IEC 8, 3: IEC 9
 #define DEVICE_MAX_DEVICE_COUNT		(DEVICE_HIGHEST_DEVICE_NUM - DEVICE_LOWEST_DEVICE_NUM + 1)
 
-#define NO_DISK_PRESENT_FILE_NAME	31	// this is a char I see reported as a "islbl" by tool when scanning a floppy disk drive with no disk in it. 
-#define NO_DISK_PRESENT_ANYMORE_FILE_NAME	28	// this is a char I see reported as a "islbl" by tool when scanning a floppy disk drive with no disk in it, when previously it was scanned with a disk in it.  
+#define NO_DISK_PRESENT_FILE_NAME	31	// this is a char I see reported as a "islbl" by tool when scanning a floppy disk drive with no disk in it.
+#define NO_DISK_PRESENT_ANYMORE_FILE_NAME	28	// this is a char I see reported as a "islbl" by tool when scanning a floppy disk drive with no disk in it, when previously it was scanned with a disk in it.
 
 #define MEM_DUMP_BYTES_PER_ROW		16
 #define MAX_MEM_DUMP_LEN			(24 * MEM_DUMP_BYTES_PER_ROW)	// 24*16 = 384
@@ -106,7 +105,7 @@
 #define STORAGE_STRING_BUFFER_1				(STORAGE_FILE_BUFFER_1 + STORAGE_FILE_BUFFER_1_LEN)	// temp string merge/etc buff
 #define STORAGE_STRING_BUFFER_1_LEN			204	// 204b buffer. see cc65 memory config file. this is outside cc65 space.
 #define STORAGE_STRING_BUFFER_2				(STORAGE_STRING_BUFFER_1 + STORAGE_STRING_BUFFER_1_LEN)	// temp string merge/etc buff
-#define STORAGE_STRING_BUFFER_1_LEN			204	// 204b buffer. 
+#define STORAGE_STRING_BUFFER_2_LEN           204 // 204b buffer.
 #define STORAGE_TEMP_UNUSED_1B				(STORAGE_STRING_BUFFER_2 + STORAGE_STRING_BUFFER_2_LEN)	// 799 is hard coded, so this is just noting that we have 1 unused byte here.
 
 
@@ -206,16 +205,17 @@
 #define ACTION_LOAD_MEATLOAF_URL	'M'	// put up text window, let user type in a URL, then pass that as load command.
 
 // device actions
-#define ACTION_SWITCH_TO_SD			'0'
-#define ACTION_SWITCH_TO_FLOPPY_1	'1'
-#define ACTION_SWITCH_TO_FLOPPY_2	'2'
+#define ACTION_SWITCH_TO_EXTERNAL_SD			'0'
+#define ACTION_SWITCH_TO_IEC_8	'2'
+#define ACTION_SWITCH_TO_IEC_9	'3'
+#define ACTION_SWITCH_TO_INTERNAL_SD '1'
 #define ACTION_SWITCH_TO_RAM		'8'
 #define ACTION_SWITCH_TO_FLASH		'9'
 #define ACTION_FORMAT_DISK			CH_DQUOTE
 
 // app actions
 #define ACTION_SET_TIME				'C' // c for set CLOCK
-#define ACTION_ABOUT				'a' 
+#define ACTION_ABOUT				'a'
 #define ACTION_EXIT_TO_BASIC		'b'
 #define ACTION_EXIT_TO_DOS			'd'
 #define ACTION_QUIT					'q'
@@ -308,10 +308,11 @@
 
 typedef enum device_number
 {
-	DEVICE_SD_CARD 				= 0,
-	DEVICE_FLOPPY_1 			= 1,
-	DEVICE_FLOPPY_2				= 2,
-	DEVICE_MAX_DISK_DEVICE		= 3,	// use as upper bound, e.g, if x < DEVICE_MAX_DISK_DEVICE then this is a disk
+	DEVICE_EXTERNAL_SD = 0,
+    DEVICE_INTERNAL_SD = 1,
+	DEVICE_IEC_8 			= 2,
+	DEVICE_IEC_9				= 3,
+	DEVICE_MAX_DISK_DEVICE		= 4,	// use as upper bound, e.g, if x < DEVICE_MAX_DISK_DEVICE then this is a disk
 	DEVICE_MIN_MEMORY_DEVICE	= 7,	// use as lower bound, e.g, if x > DEVICE_MIN_MEMORY_DEVICE then this is RAM or Flash
 	DEVICE_RAM					= 8,
 	DEVICE_FLASH				= 9,
@@ -321,7 +322,7 @@ typedef enum device_number
 /*                                 Structs                                   */
 /*****************************************************************************/
 
-// also defined in f256.h
+// also defined in wildbits.h
 
 // typedef struct DateStamp {
 //    int32_t	ds_Days;	      /* Number of days since Jan. 1, 1978 */

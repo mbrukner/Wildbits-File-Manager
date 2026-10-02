@@ -1,12 +1,12 @@
 /*
- * f256jr.h
+ * wildbits.h
  *
  *  Created on: November 29, 2022
  *      Author: micahbly
  */
 
-#ifndef F256JR_H_
-#define F256JR_H_
+#ifndef WILDBITS_JR_H_
+#define WILDBITS_JR_H_
 
 
 
@@ -29,7 +29,7 @@
 #define R16(x)						*((volatile uint16_t* const)(x))		// make sure we read an 16 bit byte; for RNG etc.
 
 
-// ** F256jr MMU
+// ** Wildbits MMU
 #define MMU_MEM_CTRL					0x0000	// bit 0-1: activate LUT (exit editing); 4-5 LUT to be edited; 7: activate edit mode
 #define MMU_IO_CTRL						0x0001	// bits 0-1: IO page; bit 2: disable IO
 
@@ -37,7 +37,7 @@
 #define BANK_KERNAL						0x07	// 0xe000-0xffff
 
 
-// ** F256jr - Tiny VICKY
+// ** Wildbits - Tiny VICKY
 
 #define TEXT_COL_COUNT_FOR_PLOTTING		80	// regardless of visible cols (between borders), VRAM is fixed at 80 cols across.
 #define TEXT_ROW_COUNT_FOR_PLOTTING		60	// regardless of visible rows (between borders), VRAM is fixed at 60 rows up/down.
@@ -241,14 +241,14 @@
 #define RTC_DAY_OF_WEEK					0xd698		//  210: day of week digit
 #define RTC_MONTH						0xd699		//    4: second digit, 3210: 1st digit
 #define RTC_YEAR						0xd69a		// 7654: second digit, 3210: 1st digit
-#define RTC_RATES						0xd69b		//  654: WD (watchdog, not really relevant to F256); 3210: RS
+#define RTC_RATES						0xd69b		//  654: WD (watchdog, not really relevant to WILDBITS); 3210: RS
 	#define FLAG_RTC_RATE_NONE			0b00000000		// applies to bits 3210 of RTC_RATES
 	#define FLAG_RTC_RATE_31NS			0b00000001		// applies to bits 3210 of RTC_RATES. See manual for values between 0001 and 1101
 	#define FLAG_RTC_RATE_125MS			0b00001101		// applies to bits 3210 of RTC_RATES
 	#define FLAG_RTC_RATE_63MS			0b00001100		// applies to bits 3210 of RTC_RATES - 62.5ms
 	#define FLAG_RTC_RATE_250MS			0b00001110		// applies to bits 3210 of RTC_RATES
 	#define FLAG_RTC_RATE_500MS			0b00001111		// applies to bits 3210 of RTC_RATES 
-#define RTC_ENABLES						0xd69c		// Controls various interrupt enables, only some of which apply to an F256
+#define RTC_ENABLES						0xd69c		// Controls various interrupt enables, only some of which apply to an WILDBITS
 	#define FLAG_RTC_PERIODIC_INT_EN	0b00000100		// set PIE (bit 2) to raise interrupt based on RTC_RATES
 	#define FLAG_RTC_ALARM_INT_EN		0b00001000		// Set AEI (bit 3) to raise interrupt based on RTC_SECONDS_ALARM, etc. 
 #define RTC_FLAGS						0xd69d		// check to see why an RTC interrupt was raised
@@ -266,7 +266,7 @@
 #define RANDOM_NUM_GEN_HI				0xd6a5		// both the SEEDH and the RNDH (depends on bit 1 of RND_CTRL)
 #define RANDOM_NUM_GEN_ENABLE			0xd6a6		// bit 0: enable/disable. bit 1: seed mode on/off. "RND_CTRL"
 
-#define MACHINE_ID_REGISTER				0xd6a7		// will be '2' for F256JR
+#define MACHINE_ID_REGISTER				0xd6a7		// will be '2' for WILDBITS_JR
 #define MACHINE_PCB_ID_0				0xd6a8
 #define MACHINE_PCB_ID_1				0xd6a9
 #define MACHINE_PCB_MAJOR				0xd6eb		// error in manual? this and next 4 all show same addr. changing here to go up by 1.
@@ -403,20 +403,20 @@
 #define VICKY_RES_UNUSED7			0x40	// 0b01000000
 #define VICKY_RES_UNUSED8			0x80	// 0b10000000
 
-#define VICKY_BITMAP_MAX_H_RES		320		// VICKY in F256K and Jr supports a max resolution of 320x240, even if text engine displays at 640x480
-#define VICKY_BITMAP_MAX_V_RES		240		// VICKY in F256K and Jr supports a max resolution of 320x240, even if text engine displays at 640x480
+#define VICKY_BITMAP_MAX_H_RES		320		// VICKY in WILDBITS_K and Jr supports a max resolution of 320x240, even if text engine displays at 640x480
+#define VICKY_BITMAP_MAX_V_RES		240		// VICKY in WILDBITS_K and Jr supports a max resolution of 320x240, even if text engine displays at 640x480
 
 #define RES_320X200		0
 #define RES_320X240		1
-#define RES_640X480		3		// currently F256K2 and 68K machines only
-#define RES_800X600		4		// currently not supported on F256 platform; 68K only
-#define RES_1024X768	5		// currently not supported on F256 platform; 68K only
+#define RES_640X480		3		// currently WILDBITS_K2 and 68K machines only
+#define RES_800X600		4		// currently not supported on WILDBITS platform; 68K only
+#define RES_1024X768	5		// currently not supported on WILDBITS platform; 68K only
 
 // machine model numbers - for decoding s_sys_info.model - value read from MACHINE_ID_REGISTER (see above)
 #define MACHINE_C256FMX			0x00	///< for s_sys_info.model
 #define MACHINE_C256U			0x01	///< for s_sys_info.model
-#define MACHINE_F256JR			0x02	///< for s_sys_info.model
-#define MACHINE_F256JRE			0x03	///< for s_sys_info.model
+#define MACHINE_WILDBITS_JR			0x02	///< for s_sys_info.model
+#define MACHINE_WILDBITS_JRE			0x03	///< for s_sys_info.model
 #define MACHINE_GENX			0x04	///< for s_sys_info.model
 #define MACHINE_C256_UPLUS		0x05	///< for s_sys_info.model
 #define MACHINE_UNDEFINED_1		0x06	///< for s_sys_info.model
@@ -429,11 +429,11 @@
 #define MACHINE_A2560K60		0x0d	///< for s_sys_info.model
 #define MACHINE_UNDEFINED_3		0x0e	///< for s_sys_info.model
 #define MACHINE_UNDEFINED_4		0x0f	///< for s_sys_info.model
-#define MACHINE_F256P			0x10	///< for s_sys_info.model
-#define MACHINE_F256K2			0x11	///< for s_sys_info.model
-#define MACHINE_F256K			0x12	///< for s_sys_info.model
-#define MACHINE_F256KE			0x13	///< for s_sys_info.model
-#define MACHINE_F256K2E			0x14	///< for s_sys_info.model
+#define MACHINE_WILDBITSP			0x10	///< for s_sys_info.model
+#define MACHINE_WILDBITS_K2			0x11	///< for s_sys_info.model
+#define MACHINE_WILDBITS_K			0x12	///< for s_sys_info.model
+#define MACHINE_WILDBITS_KE			0x13	///< for s_sys_info.model
+#define MACHINE_WILDBITS_K2E			0x14	///< for s_sys_info.model
 
 #define MACHINE_MODEL_MASK		0x1F		
 
@@ -909,4 +909,4 @@ typedef struct VICKY256Header
 
 
 
-#endif /* F256JR_H_ */
+#endif /* WILDBITS_JR_H_ */

@@ -4,7 +4,7 @@
  *  Created on: Oct 28, 2020
  *      Author: micahbly
  *
- *  This is a huge cut-down of the Amiga WorkBench2000 code, for F256 f/manager and B128 f/manager
+ *  This is a huge cut-down of the Amiga WorkBench2000 code, for WILDBITS Wildbits File Manager and B128 Wildbits File Manager
  *    8-bit version started Jan 12, 2023
  */
 

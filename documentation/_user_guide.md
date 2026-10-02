@@ -1,4 +1,5 @@
-# User Guide
+# Wildbits File Manager guide
 
-- [Installing the f/manager](installing.md)
-- [Using the f/manager](using.md)
+- [Installing](installing.md)
+- [Using](using.md)
+- [Review and validation](review.md)

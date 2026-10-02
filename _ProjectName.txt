@@ -1,1 +1,1 @@
-fmanager
+Wildbits File Manager

@@ -10,7 +10,7 @@
 	.importzp	sp, sreg, regsave, regbank
 	.importzp	tmp1, tmp2, tmp3, tmp4, ptr1, ptr2, ptr3, ptr4
 	.macpack	longbranch
-	
+
 ; import from lich king .c
 ;	.import _some_variable
 
@@ -44,9 +44,9 @@
 
 	.exportzp	_global_string_buffer
 	.exportzp	_global_string_buffer2
-	
 
-; F256 DMA addresses and bit values
+
+; WILDBITS DMA addresses and bit values
 
 DMA_CTRL = $DF00		; DMA Control Register
 DMA_CTRL_START = $80	; Start the DMA operation
@@ -88,8 +88,8 @@ _zp_old_io_page:		.res 1	;-- $26
 
 _global_string_buffer:			.res 2;
 _global_string_buffer2:			.res 2;
-	
-	
+
+
 ; ---------------------------------------------------------------
 ; uint8_t __fastcall__ Memory_SwapInNewBank(uint8_t the_bank_slot)
 ; ---------------------------------------------------------------
@@ -99,43 +99,31 @@ _global_string_buffer2:			.res 2;
 
 .segment	"CODE"
 
-.proc	_Memory_SwapInNewBank: near
-
-.segment	"CODE"
-
-	SEI						; disable IRQs just in case one hits in the middle if MMU mapping
-	
-	TAX						; get the lut slot (0-7) we want to remap
-
-							
-.ifdef _SIMULATOR_			; emulator seems to start with LUT0, but kernel on machine with lut3. not sure why emulator is different
-	LDA #$80				; edit mode (bit 7) + edit lut #4 (bits 4-5 both on) + active lut stays as #4 (bits 0-1 on)
-.else
-	LDA #$B3
-.endif
-	STA $0000				; make the change
-
-	LDA $0008,x				; before modifying the current map, get the current value of the bank we're about to remap
-	STA _zp_old_bank_num
-
-	LDA _zp_bank_num		; get the target physical bank # back
-	STA $0008,x				; Set the System bank to use for this bank
-
-.ifdef _SIMULATOR_			; emulator seems to start with LUT0, but kernel on machine with lut3. not sure why emulator is different
-	LDA #$00				; Select LUT#0 as active, turn off editing
-.else
-	LDA #$33				; Select LUT#3 as active, turn off editing
-.endif
-	STA $0000
-	
-	; do the return. cc65 requires functions return a 16 bit value!
-	LDX #00
-	LDA _zp_old_bank_num
-
-	CLI						; safe to reenable IRQs now
-	
-	RTS
-
+.proc _Memory_SwapInNewBank: near
+    php
+    sei
+    tax
+    lda $0000
+    pha
+    and #$03
+    sta _zp_bank_slot
+    asl
+    asl
+    asl
+    asl
+    ora _zp_bank_slot
+    ora #$80
+    sta $0000
+    lda $0008,x
+    sta _zp_old_bank_num
+    lda _zp_bank_num
+    sta $0008,x
+    pla
+    sta $0000
+    lda _zp_old_bank_num
+    ldx #0
+    plp
+    rts
 .endproc
 
 
@@ -148,35 +136,29 @@ _global_string_buffer2:			.res 2;
 
 .segment	"CODE"
 
-.proc	_Memory_RestorePreviousBank: near
-
-.segment	"CODE"
-
-	SEI						; disable IRQs just in case one hits in the middle if MMU mapping
-	
-	TAX						; get the lut slot (0-7) we want to remap
-
-.ifdef _SIMULATOR_			; emulator seems to start with LUT0, but kernel on machine with lut3. not sure why emulator is different
-	LDA #$80				; edit mode (bit 7) + edit lut #4 (bits 4-5 both on) + active lut stays as #4 (bits 0-1 on)
-.else
-	LDA #$B3
-.endif
-	STA $0000				; make the change
-
-	LDA _zp_old_bank_num	; get the previously mapped physical bank # back
-	STA $0008,x				; Set the System bank to use for this bank
-
-.ifdef _SIMULATOR_			; emulator seems to start with LUT0, but kernel on machine with lut3. not sure why emulator is different
-	LDA #$00				; Select LUT#0 as active, turn off editing
-.else
-	LDA #$33				; Select LUT#3 as active, turn off editing
-.endif
-	STA $0000				
-
-	CLI						; safe to reenable IRQs now
-
-	RTS
-
+.proc _Memory_RestorePreviousBank: near
+    php
+    sei
+    tax
+    lda $0000
+    pha
+    and #$03
+    sta _zp_bank_slot
+    asl
+    asl
+    asl
+    asl
+    ora _zp_bank_slot
+    ora #$80
+    sta $0000
+    lda _zp_old_bank_num
+    sta $0008,x
+    pla
+    sta $0000
+    lda _zp_old_bank_num
+    ldx #0
+    plp
+    rts
 .endproc
 
 
@@ -190,31 +172,29 @@ _global_string_buffer2:			.res 2;
 
 .segment	"CODE"
 
-.proc	_Memory_GetMappedBankNum: near
-
-.segment	"CODE"
-
-	SEI						; disable IRQs just in case one hits in the middle if MMU mapping
-	
-	TAX						; get the lut slot (0-7) we want to remap
-
-							
-.ifdef _SIMULATOR_			; emulator seems to start with LUT0, but kernel on machine with lut3. not sure why emulator is different
-	LDA #$80				; edit mode (bit 7) + edit lut #4 (bits 4-5 both on) + active lut stays as #4 (bits 0-1 on)
-.else
-	LDA #$B3
-.endif
-	STA $0000				; make the change
-
-	LDA $0008,x				; get the current value of the bank we're about to remap
-	
-	; do the return. cc65 requires functions return a 16 bit value!
-	LDX #00
-
-	CLI						; safe to reenable IRQs now
-
-	RTS
-
+.proc _Memory_GetMappedBankNum: near
+    php
+    sei
+    tax
+    lda $0000
+    pha
+    and #$03
+    sta _zp_bank_slot
+    asl
+    asl
+    asl
+    asl
+    ora _zp_bank_slot
+    ora #$80
+    sta $0000
+    lda $0008,x
+    sta _zp_bank_slot
+    pla
+    sta $0000
+    lda _zp_bank_slot
+    ldx #0
+    plp
+    rts
 .endproc
 
 
@@ -222,7 +202,7 @@ _global_string_buffer2:			.res 2;
 ; void __fastcall__ Memory_DebugOut(void)
 ; ---------------------------------------------------------------
 ;// call to a routine in memory.asm that writes an illegal opcode followed by address of debug buffer
-;// that is a simple to the f256jr emulator to write the string at the debug buffer out to the console
+;// that is a simple to the wildbits emulator to write the string at the debug buffer out to the console
 
 ;.segment	"CODE"
 ;
@@ -292,10 +272,10 @@ _global_string_buffer2:			.res 2;
 ; ---------------------------------------------------------------
 ;// call to a routine in memory.asm that copies specified number of bytes from src to dst
 ;// set zp_to_addr, zp_from_addr, zp_copy_len before calling.
-;// this version uses the F256's DMA capabilities to copy, so addresses can be 24 bit (system memory, not CPU memory)
+;// this version uses the WILDBITS's DMA capabilities to copy, so addresses can be 24 bit (system memory, not CPU memory)
 ;// in other words, no need to page either dst or src into CPU space
 
-; status - 2024-03-17: DMA works (1 out of 5 or so times), but very unstable. others report same instability. commenting out until a more stable way can be identified. 
+; status - 2024-03-17: DMA works (1 out of 5 or so times), but very unstable. others report same instability. commenting out until a more stable way can be identified.
 
 
 ;.segment	"CODE"
@@ -332,7 +312,7 @@ _global_string_buffer2:			.res 2;
 ;			NOP
 ;			NOP
 ;			NOP
-;			
+;
 ;			; Enable the DMA engine and set it up for a (1D) copy operation:
 ;			LDA #DMA_CTRL_ENABLE
 ;			STA DMA_CTRL
@@ -342,7 +322,7 @@ _global_string_buffer2:			.res 2;
 ;			NOP
 ;			NOP
 ;			NOP
-;			
+;
 ;			;Source address (3 byte):
 ;			LDA _zp_from_addr
 ;			STA DMA_SRC_ADDR
@@ -376,8 +356,8 @@ _global_string_buffer2:			.res 2;
 ;			; wait for it to finish
 ;
 ;wait_dma:	LDA DMA_STATUS
-;			BMI wait_dma            ; Wait until DMA is not busy 
-;			
+;			BMI wait_dma            ; Wait until DMA is not busy
+;
 ;			NOP
 ;			NOP
 ;			NOP
@@ -385,15 +365,15 @@ _global_string_buffer2:			.res 2;
 ;			NOP
 ;
 ;			STZ DMA_CTRL			; Turn off the DMA engine
-;			
+;
 ;			NOP
 ;			NOP
 ;			NOP
 ;			NOP
 ;			NOP
-;			
+;
 ;			CLI						; re-enable interrupts
-;			
+;
 ;			RTS
 ;.endproc
 
@@ -403,7 +383,7 @@ _global_string_buffer2:			.res 2;
 ; ---------------------------------------------------------------
 ;// call to a routine in memory.asm that fills the specified number of bytes to the dst
 ;// set zp_to_addr, zp_copy_len to num bytes to fill, and zp_other_byte to the fill value before calling.
-;// this version uses the F256's DMA capabilities to fill, so addresses can be 24 bit (system memory, not CPU memory)
+;// this version uses the WILDBITS's DMA capabilities to fill, so addresses can be 24 bit (system memory, not CPU memory)
 ;// in other words, no need to page either dst into CPU space
 
 
@@ -433,7 +413,7 @@ _global_string_buffer2:			.res 2;
 ;        bne wait4
 ;
 ;			STZ DMA_CTRL			; Turn off the DMA engine
-;			
+;
 ;			; Enable the DMA engine and set it up for a FILL operation:
 ;			LDA #DMA_CTRL_FILL | DMA_CTRL_ENABLE
 ;			STA DMA_CTRL
@@ -441,7 +421,7 @@ _global_string_buffer2:			.res 2;
 ;			; the fill value
 ;            lda _zp_other_byte
 ;            sta DMA_FILL_VAL
-;            
+;
 ;			;Destination address (3 byte):
 ;			LDA _zp_to_addr
 ;			STA DMA_DST_ADDR
@@ -466,23 +446,23 @@ _global_string_buffer2:			.res 2;
 ;			; wait for it to finish
 ;
 ;wait_dma:	LDA DMA_STATUS
-;			BMI wait_dma            ; Wait until DMA is not busy 
-;			
+;			BMI wait_dma            ; Wait until DMA is not busy
+;
 ;			NOP
 ;			NOP
 ;			NOP
 ;			NOP
-;			NOP
-;			NOP
-;			
 ;			NOP
 ;			NOP
 ;
 ;			NOP
 ;			NOP
-;			
+;
+;			NOP
+;			NOP
+;
 ;			CLI						; re-enable interrupts
-;			
+;
 ;			RTS
 ;.endproc
 

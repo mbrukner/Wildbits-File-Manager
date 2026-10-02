@@ -4,7 +4,7 @@
  *  Created on: Oct 28, 2020
  *      Author: micahbly
  *
- *  This is a huge cut-down of the Amiga WorkBench2000 code, for F256 f/manager and B128 f/manager
+ *  This is a huge cut-down of the Amiga WorkBench2000 code, for WILDBITS Wildbits File Manager and B128 Wildbits File Manager
  *    8-bit version started Jan 12, 2023
  */
 
@@ -68,30 +68,20 @@ void List_RepairPrevLinks(WB2KList** list_head);
 // Merging two sorted lists.
 WB2KList* List_MergeSortedList(WB2KList* list1, WB2KList* list2, bool (* compare_function)(void*, void*))
 {
-	WB2KList* result = NULL;
-
-	// Base Cases
-	if (list1 == NULL)
-	{
-		return (list2);
-	}
-	else if (list2 == NULL)
-	{
-		return (list1);
-	}
-
-	// recursively merging two lists
-	if ((*compare_function)(list2->payload_, list1->payload_))
-	{
-		result = list1;
-		result->next_item_ = List_MergeSortedList(list1->next_item_, list2,  compare_function);
-	}
-	else
-	{
-		result = list2;
-		result->next_item_ = List_MergeSortedList(list1, list2->next_item_,  compare_function);
-	}
-	return result;
+    WB2KList* result = NULL;
+    WB2KList** tail = &result;
+    while (list1 != NULL && list2 != NULL) {
+        if ((*compare_function)(list2->payload_, list1->payload_)) {
+            *tail = list1;
+            list1 = list1->next_item_;
+        } else {
+            *tail = list2;
+            list2 = list2->next_item_;
+        }
+        tail = &(*tail)->next_item_;
+    }
+    *tail = list1 != NULL ? list1 : list2;
+    return result;
 }
 
 
@@ -160,6 +150,8 @@ void List_RepairPrevLinks(WB2KList** list_head)
 	{
 		return;
 	}
+
+	prev_item->prev_item_ = NULL;
 
 	// one-item list condition check
 	if (prev_item->next_item_ == NULL)
@@ -253,7 +245,7 @@ void List_AddItem(WB2KList** list_head, WB2KList* the_item)
 // 	{
 // 		the_new_item->prev_item_ = NULL;
 // 		the_new_item->next_item_ = NULL;
-// 
+//
 // 		*list_head = the_new_item;
 // 	}
 // 	else
@@ -263,7 +255,7 @@ void List_AddItem(WB2KList** list_head, WB2KList* the_item)
 // 			the_new_item->next_item_ = the_existing_item->next_item_;
 // 			the_existing_item->next_item_->prev_item_ = the_new_item;
 // 		}
-// 		
+//
 // 		the_new_item->prev_item_ = the_existing_item;
 // 		the_existing_item->next_item_ = the_new_item;
 // 	}
@@ -298,17 +290,17 @@ void List_RemoveItem(WB2KList** list_head, WB2KList* the_item)
 // WB2KList* List_FindThisObject(WB2KList** list_head, void* the_payload)
 // {
 // 	WB2KList* the_item = *list_head;
-// 
+//
 // 	while (the_item != NULL)
 // 	{
 // 		if (the_item->payload_ == the_payload)
 // 		{
 // 			return the_item;
 // 		}
-// 
+//
 // 		the_item = the_item->next_item_;
 // 	}
-// 
+//
 // 	return NULL;
 // }
 
@@ -325,7 +317,7 @@ void List_RemoveItem(WB2KList** list_head, WB2KList* the_item)
 // WB2KList* List_GetFirst(WB2KList** list_head)
 // {
 // 	WB2KList* the_item = *list_head;
-// 
+//
 // 	if (the_item == NULL)
 // 	{
 // 		return NULL;
@@ -334,7 +326,7 @@ void List_RemoveItem(WB2KList** list_head, WB2KList* the_item)
 // 	{
 // 		return the_item;
 // 	}
-// 
+//
 // }
 
 
@@ -342,17 +334,17 @@ void List_RemoveItem(WB2KList** list_head, WB2KList* the_item)
 // WB2KList* List_GetLast(WB2KList** list_head)
 // {
 // 	WB2KList* the_item = *list_head;
-// 
+//
 // 	if (the_item == NULL)
 // 	{
 // 		return NULL;
 // 	}
-// 
+//
 // 	while (the_item->next_item_ != NULL)
 // 	{
 // 		the_item = the_item->next_item_;
 // 	}
-// 
+//
 // 	return the_item;
 // }
 
@@ -361,14 +353,14 @@ void List_RemoveItem(WB2KList** list_head, WB2KList* the_item)
 // WB2KList* List_Print(WB2KList** list_head, void (* print_function)(void*))
 // {
 // 	WB2KList* the_item = *list_head;
-// 
+//
 // 	while (the_item != NULL)
 // 	{
 // 		(*print_function)(the_item->payload_);
-// 
+//
 // 		the_item = the_item->next_item_;
 // 	}
-// 
+//
 // 	return NULL;
 // }
 
@@ -392,25 +384,25 @@ void List_InitMergeSort(WB2KList** list_head, bool (* compare_function)(void*, v
 // 	WB2KList* fast_ptr;
 // 	slow_ptr = starting_item;
 // 	fast_ptr = starting_item;
-// 
-// 	// are the upper and lower bounds the same thing to start with? 
+//
+// 	// are the upper and lower bounds the same thing to start with?
 // 	if (starting_item == max_item)
 // 	{
 // 		return starting_item;
 // 	}
-// 	
+//
 // 	// fast_ptr is incremented twice and slow_ptr is incremented once
 // 	while (fast_ptr != NULL && fast_ptr != max_item)
 // 	{
 // 		fast_ptr = fast_ptr->next_item_;
-// 
+//
 // 		if (fast_ptr != NULL && fast_ptr != max_item)
 // 		{
 // 			slow_ptr = slow_ptr->next_item_;
 // 			fast_ptr = fast_ptr->next_item_;
 // 		}
 // 	}
-// 
+//
 // 	// slow_ptr is at the midpoint
 // 	return slow_ptr;
 // }

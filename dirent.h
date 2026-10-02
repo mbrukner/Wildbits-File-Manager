@@ -47,8 +47,8 @@ typedef struct DIR DIR;
 #define _DE_MAX_NAME
 
 struct dirent {
-    uint16_t		d_type;		// 
-    uint16_t		d_blocks;	// size in blocks (256 for FAT32, 254 for IEC)
+    uint16_t		d_type;		//
+    uint32_t		d_blocks;	// size in blocks (256 for FAT32, 254 for IEC)
     uint8_t			year;		// kernel extended buffer
     uint8_t			month;		// kernel extended buffer
     uint8_t			day;		// kernel extended buffer

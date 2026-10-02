@@ -10,7 +10,7 @@
 
 /* about this class
  *
- *  Routines for starting up f/manager, including show splash screen(s)
+ *  Routines for starting up Wildbits File Manager, including show splash screen(s)
  *    Some code here originated in sys.c and other places before being moved here
  *
  */

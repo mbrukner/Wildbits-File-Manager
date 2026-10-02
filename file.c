@@ -4,7 +4,7 @@
  *  Created on: Sep 5, 2020
  *      Author: micahbly
  *
- *  This is a huge cut-down of the Amiga WorkBench2000 code, for F256 f/manager and B128 f/manager
+ *  This is a huge cut-down of the Amiga WorkBench2000 code, for WILDBITS Wildbits File Manager and B128 Wildbits File Manager
  *    8-bit version started Jan 12, 2023
  */
 
@@ -36,8 +36,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-// F256 includes
-#include "f256.h"
+// WILDBITS includes
+#include "wildbits.h"
 
 
 /*****************************************************************************/
@@ -54,7 +54,7 @@
 static char			file_compare_filename_buffer[FILE_MAX_FILENAME_SIZE];	// for stashing a 2nd filename from EM
 static char*		file_compare_filename = file_compare_filename_buffer;
 
-static uint8_t		temp_file_extension_buffer[FILE_MAX_EXTENSION_SIZE];	// 8 probably larger than needed, but... 
+static uint8_t		temp_file_extension_buffer[FILE_MAX_EXTENSION_SIZE];	// 8 probably larger than needed, but...
 
 #pragma data-name (pop)
 
@@ -72,6 +72,8 @@ extern char*		global_temp_path_2;
 
 extern char*		global_retrieved_em_filename;
 
+uint16_t global_file_bytes_loaded;
+uint16_t global_file_load_limit = 255U * 256U;
 extern uint8_t				zp_bank_num;
 #pragma zpsym ("zp_bank_num");
 
@@ -102,9 +104,10 @@ uint8_t File_GetFileTypeFromExtension(uint8_t default_file_type, const char* the
 {
 	// get file extensions
 	General_ExtractFileExtensionFromFilename(the_file_name, (char*)&temp_file_extension_buffer);
-	
+
 	// do this in order of most likely to least likely
-	if (General_Strncasecmp((char*)&temp_file_extension_buffer, "pgZ", FILE_MAX_EXTENSION_SIZE) == 0)
+	if (General_Strncasecmp((char*)&temp_file_extension_buffer, "pgZ", FILE_MAX_EXTENSION_SIZE) == 0 ||
+        General_Strncasecmp((char*)&temp_file_extension_buffer, "pgX", FILE_MAX_EXTENSION_SIZE) == 0)
 	{
 		return FNX_FILETYPE_EXE;
 	}
@@ -186,13 +189,13 @@ char* File_GetFileTypeString(uint8_t cbm_filetype_id)
 // 		case _CBM_T_SEQ:
 // 			// don't let this go through as SEQ: this is how microkernel sees ALL commodore files apparently
 // 			return General_GetString(ID_STR_FILETYPE_SEQ);
-// 		
+//
 // 		case _CBM_T_PRG:
 // 			return General_GetString(ID_STR_FILETYPE_PRG);
-// 			
+//
 // 		case _CBM_T_USR:
 // 			return General_GetString(ID_STR_FILETYPE_USR);
-// 		
+//
 // 		case _CBM_T_REL:
 // 			return General_GetString(ID_STR_FILETYPE_REL);
 
@@ -201,21 +204,21 @@ char* File_GetFileTypeString(uint8_t cbm_filetype_id)
 
 		case _CBM_T_DIR:
 			return General_GetString(ID_STR_FILETYPE_DIR);
-		
+
 		case _CBM_T_LNK:
 			return General_GetString(ID_STR_FILETYPE_LINK);
 
 		case _CBM_T_HEADER:
-			return General_GetString(ID_STR_FILETYPE_HEADER);		
+			return General_GetString(ID_STR_FILETYPE_HEADER);
 
-		case FNX_FILETYPE_BASIC:	
+		case FNX_FILETYPE_BASIC:
 			// any file ending in .bas
 			return General_GetString(ID_STR_FILETYPE_BASIC);
-			
-		case FNX_FILETYPE_FONT:	
+
+		case FNX_FILETYPE_FONT:
 			// any 2k file ending in .fnt
 			return General_GetString(ID_STR_FILETYPE_FONT);
-			
+
 		case FNX_FILETYPE_EXE:
 			// any .pgz, etc executable
 			return General_GetString(ID_STR_FILETYPE_EXE);
@@ -229,35 +232,35 @@ char* File_GetFileTypeString(uint8_t cbm_filetype_id)
 			return General_GetString(ID_STR_FILETYPE_MUSIC);
 
 		case FNX_FILETYPE_MP3:
-			// any .mp3 music file that F256amp (or similar) can play
+			// any .mp3 music file that WILDBITSamp (or similar) can play
 			return General_GetString(ID_STR_FILETYPE_MP3);
-		
+
 		case FNX_FILETYPE_OGG:
-			// any .ogg music file that F256amp (or similar) can play
+			// any .ogg music file that WILDBITSamp (or similar) can play
 			return General_GetString(ID_STR_FILETYPE_OGG);
-		
+
 		case FNX_FILETYPE_WAV:
-			// any .wav file that F256amp (or similar) can play
+			// any .wav file that WILDBITSamp (or similar) can play
 			return General_GetString(ID_STR_FILETYPE_WAV);
-		
+
 		case FNX_FILETYPE_TEXT:
 			// any .txt, .src, etc file that can be opened with a text editor
 			return General_GetString(ID_STR_FILETYPE_TEXT);
-		
+
 		case FNX_FILETYPE_MIDI:
 			// a midi file that can be opened with a midi player
 			return General_GetString(ID_STR_FILETYPE_MIDI);
-		
+
 		case FNX_FILETYPE_VGM:
 			// a VGM (video game music) file that can be opened with a VGM player
 			return General_GetString(ID_STR_FILETYPE_VGM);
-		
+
 		case FNX_FILETYPE_RSD:
 			// a raw SID file that can be opened with a raw SID player
 			return General_GetString(ID_STR_FILETYPE_RSD);
-		
+
 		default:
-			//sprintf(global_string_buff1, "Unrecognized file type: %u", cbm_filetype_id);
+			//snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, "Unrecognized file type: %u", cbm_filetype_id);
 			//Buffer_NewMessage(global_string_buff1);
 			return General_GetString(ID_STR_FILETYPE_OTHER);
 	}
@@ -303,14 +306,14 @@ WB2KFileObject* File_New(uint8_t the_panel_id, const char* the_file_name, bool i
 	the_file->panel_id_ = the_panel_id;
 	the_file->row_ = the_row;
 	the_file->id_ = the_row;
-	
+
 	// copy the passed filename into EM
 	App_SetFilenameInEM(the_file, the_file_name);
 
 	// remember fizesize, to use when moving/copying files, and giving status feedback to user
 	the_file->size_ = the_filesize;
-// 	sprintf(global_string_buff1, "%4lu blocks", the_filesize);
-// 
+// 	snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, "%4lu blocks", the_filesize);
+//
 // 	if ( (the_file->file_size_string_ = General_StrlcpyWithAlloc(global_string_buff1, FILE_SIZE_MAX_SIZE)) == NULL)
 // 	{
 // 		Buffer_NewMessage("could not allocate memory for human-readable file-size");
@@ -333,7 +336,7 @@ WB2KFileObject* File_New(uint8_t the_panel_id, const char* the_file_name, bool i
 
 	// file is brand new: not selected yet.
 	the_file->selected_ = false;
-	
+
 	// remember date stamp, for sorting, display to user, etc.
 	the_file->datetime_.year = the_datetime->year;
 	the_file->datetime_.month = the_datetime->month;
@@ -352,99 +355,7 @@ error:
 
 // duplicator
 // makes a copy of the passed file object
-WB2KFileObject* File_Duplicate(WB2KFileObject* the_original_file)
-{
-	WB2KFileObject*		the_duplicate_file;
-// 	bool				date_ok;
-	
-	if (the_original_file == NULL)
-	{
-		//LOG_ERR((_null_err, __func__ , __LINE__));
-		return NULL;
-	}
-	
-	if ( (the_duplicate_file = (WB2KFileObject*)calloc(1, sizeof(WB2KFileObject)) ) == NULL)
-	{
-		LOG_ERR((_allocate_memory_err, __func__ , __LINE__));
-		goto error;
-	}
-	LOG_ALLOC(("%s %d:	__ALLOC__	the_duplicate_file	%p	size	%i", __func__ , __LINE__, the_duplicate_file, sizeof(WB2KFileObject)));
 
-// 	if ( (the_duplicate_file->file_name_ = General_StrlcpyWithAlloc(the_original_file->file_name_, FILE_MAX_FILENAME_SIZE)) == NULL)
-// 	{
-// 		LOG_ERR(("%s %d: could not allocate memory for the file name", __func__ , __LINE__));
-// 		goto error;
-// 	}
-// 	LOG_ALLOC(("%s %d:	__ALLOC__	the_duplicate_file->file_name_	%p	size	%i", __func__ , __LINE__, the_duplicate_file->file_name_, General_Strnlen(the_duplicate_file->file_name_, FILE_MAX_FILENAME_SIZE) + 1));
-
-	// no need to copy the filename: the duplicate file object is going to share the same row ID anyway
-
-
-	// remember fizesize, to use when moving/copying files, and giving status feedback to user
-	the_duplicate_file->size_ = the_original_file->size_;
-
-// 	if ( (the_duplicate_file->file_size_string_ = General_StrlcpyWithAlloc(the_original_file->file_size_string_, FILE_MAX_PATHNAME_SIZE)) == NULL)
-// 	{
-// 		LOG_ERR(("%s %d: could not allocate memory for the file size string", __func__ , __LINE__));
-// 		goto error;
-// 	}
-// 	LOG_ALLOC(("%s %d:	__ALLOC__	the_duplicate_file->file_size_string_	%p	size	%i", __func__ , __LINE__, the_duplicate_file->file_size_string_, General_Strnlen(the_duplicate_file->file_size_string_, FILE_SIZE_MAX_SIZE) + 1));
-
-
-// 	// remember date stamp, for sorting, display to user, etc. Use OS functions to convert the DateStamp we got from ExAll to a datetime and strings
-// 	// need 3 strings to hold date, each with max len LEN_DATSTRING
-// 	date_ok = false;
-// 
-// 	if ( (the_duplicate_file->datetime_.dat_StrDate = (char*)calloc(LEN_DATSTRING + 1, sizeof(char)) ) != NULL)
-// 	{
-// 		if ( (the_duplicate_file->datetime_.dat_StrDay = (char*)calloc(LEN_DATSTRING + 1, sizeof(char)) ) != NULL)
-// 		{
-// 			if ( (the_duplicate_file->datetime_.dat_StrTime = (char*)calloc(LEN_DATSTRING + 1, sizeof(char)) ) != NULL)
-// 			{
-// 				the_duplicate_file->datetime_.dat_Format = FORMAT_INT;
-// 				the_duplicate_file->datetime_.dat_Flags = DTF_FUTURE;
-// 				the_duplicate_file->datetime_.dat_Stamp.ds_Days = the_original_file->datetime_.dat_Stamp.ds_Days;
-// 				the_duplicate_file->datetime_.dat_Stamp.ds_Minute = the_original_file->datetime_.dat_Stamp.ds_Minute;
-// 				the_duplicate_file->datetime_.dat_Stamp.ds_Tick = the_original_file->datetime_.dat_Stamp.ds_Tick;
-// 
-// 				if (DateToStr(&the_duplicate_file->datetime_))
-// 				{
-// 					date_ok = true;
-// 				}
-// 				
-// 				LOG_ALLOC(("%s %d:	__ALLOC__	the_duplicate_file->datetime_.dat_StrDate	%p	size	%i", __func__ , __LINE__, the_duplicate_file->datetime_.dat_StrDate, LEN_DATSTRING + 1));
-// 				LOG_ALLOC(("%s %d:	__ALLOC__	the_duplicate_file->datetime_.dat_StrDay	%p	size	%i", __func__ , __LINE__, the_duplicate_file->datetime_.dat_StrDay, LEN_DATSTRING + 1));
-// 				LOG_ALLOC(("%s %d:	__ALLOC__	the_duplicate_file->datetime_.dat_StrTime	%p	size	%i", __func__ , __LINE__, the_duplicate_file->datetime_.dat_StrTime, LEN_DATSTRING + 1));
-// 			}
-// 		}
-// 	}
-// 
-// 	if (date_ok == false)
-// 	{
-// 		LOG_ERR(("%s %d: could not process the file date", __func__ , __LINE__));
-// 		goto error;
-// 	}
-
-
-	// get filetype
-	the_duplicate_file->is_directory_ = the_original_file->is_directory_;
-	the_duplicate_file->file_type_ = the_original_file->file_type_; // ok to use same one, as both are just pointing to the same file type object anyway.
-
-	// file is brand new: not selected yet.
-	the_duplicate_file->selected_ = false;
-
-	// absolute and relative position info
-	the_duplicate_file->x_ = the_original_file->x_;
-	the_duplicate_file->display_row_ = the_original_file->display_row_;
-	the_duplicate_file->row_ = the_original_file->row_;
-	the_duplicate_file->id_ = the_original_file->id_;
-	
-	return the_duplicate_file;
-
-error:
-	if (the_duplicate_file) File_Destroy(&the_duplicate_file);
-	return NULL;
-}
 
 
 // destructor
@@ -464,14 +375,14 @@ void File_Destroy(WB2KFileObject** the_file)
 // 		free((*the_file)->file_name_);
 // 		(*the_file)->file_name_ = NULL;
 // 	}
-	
+
 // 	if ((*the_file)->file_size_string_ != NULL)
 // 	{
 // 		LOG_ALLOC(("%s %d:	__FREE__	(*the_file)->file_size_string_	%p	size	%i", __func__ , __LINE__, (*the_file)->file_size_string_, General_Strnlen((*the_file)->file_size_string_, FILE_SIZE_MAX_SIZE) + 1));
 // 		free((*the_file)->file_size_string_);
 // 		(*the_file)->file_size_string_ = NULL;
 // 	}
-	
+
 //	if (the_file->file_type_ != NULL)
 //	{
 //		//FileType_Destroy(the_file->file_type_); // do not destroy the filetype until the app is exiting. other files can easily be using this filetype
@@ -496,9 +407,9 @@ void File_Destroy(WB2KFileObject** the_file)
 // 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return;
 // 	}
-// 	
+//
 // 	the_file->selected_ = selected;
-// 
+//
 // 	return;
 // }
 
@@ -511,7 +422,7 @@ void File_UpdatePos(WB2KFileObject* the_file, uint8_t x, int8_t display_row, uin
 		//LOG_ERR((_null_err, __func__ , __LINE__));
 		return;
 	}
-	
+
 	the_file->x_ = x;
 	the_file->display_row_ = display_row;
 	the_file->row_ = row;
@@ -526,32 +437,32 @@ bool File_UpdateFileName(WB2KFileObject* the_file, const char* new_file_name)
 		//LOG_ERR((_null_err, __func__ , __LINE__));
 		return false;
 	}
-	
+
 	App_SetFilenameInEM(the_file, new_file_name);
-	
+
 	return true;
 }
 
 
 // // update the existing file path to the passed one, freeing any previous one and allocating anew.
 // bool File_UpdateFilePath(WB2KFileObject* the_file, const char* new_file_path)
-// {	
+// {
 // 	if (the_file == NULL)
 // 	{
 // 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return false;
 // 	}
-// 
+//
 // 	if (the_file->file_path_ != NULL)
 // 	{
 // 		LOG_ALLOC(("%s %d:	__FREE__	the_file->file_path_	%p	size	%i", __func__ , __LINE__, the_file->file_path_, General_Strnlen(the_file->file_path_, FILE_MAX_PATHNAME_SIZE) + 1));
 // 		free(the_file->file_path_);
 // 		the_file->file_path_ = NULL;
 // 	}
-// 	
+//
 // 	the_file->file_path_ = General_StrlcpyWithAlloc(new_file_path, FILE_MAX_PATHNAME_SIZE);
 // 	LOG_ALLOC(("%s %d:	__ALLOC__	the_file->file_path_	%p	size	%i", __func__ , __LINE__, the_file->file_path_, General_Strnlen(the_file->file_path_, FILE_MAX_PATHNAME_SIZE) + 1));
-// 	
+//
 // 	return ( (the_file->file_path_ != NULL) );
 // }
 
@@ -582,7 +493,7 @@ bool File_IsSelected(WB2KFileObject* the_file)
 // 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return false;
 // 	}
-// 
+//
 // 	return the_file->is_directory_;
 // }
 
@@ -595,7 +506,7 @@ bool File_IsSelected(WB2KFileObject* the_file)
 // 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return NULL;
 // 	}
-// 
+//
 // 	return the_file->file_name_;
 // }
 
@@ -604,24 +515,24 @@ bool File_IsSelected(WB2KFileObject* the_file)
 // char* File_GetFileDateStringCopy(WB2KFileObject* the_file)
 // {
 // 	char*	the_timedate;
-// 
+//
 // 	if (the_file == NULL)
 // 	{
 // 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return NULL;
 // 	}
-// 
+//
 // 	// combine date and time into a single string
 // 	if ( (the_timedate = (char *)calloc(MAX_SIZE_TIMEDATE_STRING + 1, sizeof(char)) ) == NULL)
 // 	{
 // 		goto error;
 // 	}
 // 	LOG_ALLOC(("%s %d:	__ALLOC__	the_timedate	%p	size	%i", __func__ , __LINE__, the_timedate, MAX_SIZE_TIMEDATE_STRING + 1));
-// 
+//
 // 	sprintf((char*)the_timedate, "%s  %s", the_file->datetime_.dat_StrDate, the_file->datetime_.dat_StrTime);
-// 
+//
 // 	return the_timedate;
-// 	
+//
 // error:
 // 	return NULL;
 // }
@@ -631,24 +542,24 @@ bool File_IsSelected(WB2KFileObject* the_file)
 // char* File_GetFileSizeStringCopy(WB2KFileObject* the_file)
 // {
 // 	char*	the_filesize;
-// 
+//
 // 	if (the_file == NULL)
 // 	{
 // 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return NULL;
 // 	}
-// 
+//
 // 	// readable filesize
 // 	if ( (the_filesize = (char *)calloc(FILE_TYPE_MAX_SIZE_NAME + 1, sizeof(char)) ) == NULL)
 // 	{
 // 		goto error;
 // 	}
 // 	LOG_ALLOC(("%s %d:	__ALLOC__	the_filesize	%p	size	%i", __func__ , __LINE__, the_filesize, FILE_TYPE_MAX_SIZE_NAME + 1));
-// 	
+//
 // 	General_MakeFileSizeReadable(the_file->size_, the_filesize);
-// 
+//
 // 	return the_filesize;
-// 	
+//
 // error:
 // 	return NULL;
 // }
@@ -662,7 +573,7 @@ bool File_IsSelected(WB2KFileObject* the_file)
 // 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return 255;
 // 	}
-// 	
+//
 // 	return the_file->file_type_;
 // }
 
@@ -671,82 +582,24 @@ bool File_IsSelected(WB2KFileObject* the_file)
 // Returns false on any error
 bool File_ReadFontData(char* the_file_path)
 {
-	// LOGIC
-	//   does not care about file type: any time of file will allowed
-	//   open file for reading > read first chunk into buffer > if space still available and not EOF continue
-	//   return false on any error
-	
-	// LOGIC
-	//   we need to keep the file stream open until it is used up, or buffer max size is hit
-
-	char*		the_font_data = (char*)FONT_MEMORY_BANK0;
-	int16_t		bytes_read; // kernel read() gives back int16_t
-	uint16_t	bytes_still_needed; // kernel read() expects uint16_t for num bytes to read
-	FILE*		the_file_handler;
-
-	if (the_file_path == NULL)
-	{
-		//LOG_ERR((_null_err, __func__ , __LINE__));
-		return false;
-	}
-
-	//sprintf(global_string_buff1, "starting binary data read of %u bytes to location %p", buffer_size, the_buffer);
-	//Buffer_NewMessage(global_string_buff1);
-
-	bytes_still_needed = TEXT_FONT_BYTE_SIZE;
-	
-	//Open file
-	the_file_handler = fopen(the_file_path, "r");	
-
-	if (the_file_handler == NULL)
-	{
-		sprintf(global_string_buff1, General_GetString(ID_STR_ERROR_FAIL_OPEN_FILE), the_file_path);
-		Buffer_NewMessage(global_string_buff1);
-		LOG_ERR(("%s %d: file '%s' could not be opened for reading", __func__ , __LINE__, the_file_path));
-		goto error;
-	}
-
-	while (bytes_still_needed > 0)
-	{
-		bytes_read = fread((uint8_t*)STORAGE_FILE_BUFFER_1, sizeof(char), STORAGE_FILE_BUFFER_1_LEN, the_file_handler);
-	
-		//sprintf(global_string_buff1, "bytes_read=%i", bytes_read);
-		//Buffer_NewMessage(global_string_buff1);
-		
-		if (bytes_read == -1)
-		{
-			// error condition
-			Buffer_NewMessage(General_GetString(ID_STR_ERROR_GENERIC_DISK));
-			LOG_ERR(("%s %d: reading file '%s' resulted in error %i", __func__ , __LINE__, the_file_path, bytes_read));
-			goto error;
-		}
-		else if (bytes_read == 0)
-		{
-			// EOF reached
-			bytes_still_needed = 0;
-		}
-		else
-		{
-			// we got some bytes, potentially all wanted bytes, so copy to final buffer
-			Sys_SwapIOPage(VICKY_IO_PAGE_FONT_AND_LUTS);	
-			memcpy((void*)the_font_data, (uint8_t*)STORAGE_FILE_BUFFER_1, bytes_read);
-			Sys_RestoreIOPage();
-			
-			bytes_still_needed -= bytes_read;
-			the_font_data += bytes_read;
-		}
-
-		//sprintf(global_string_buff1, "bytes_still_needed=%i, buffer=%p", bytes_still_needed, the_buffer);
-		//Buffer_NewMessage(global_string_buff1);
-	}
-
-	fclose(the_file_handler);
-		
-	return true;
-	
-error:
-	if (the_file_handler) fclose(the_file_handler);
-	return false;
+    FILE* handle;
+    uint16_t remaining = TEXT_FONT_BYTE_SIZE;
+    size_t count;
+    uint8_t* font = (uint8_t*)FONT_MEMORY_BANK0;
+    uint8_t* buffer = (uint8_t*)STORAGE_FILE_BUFFER_1;
+    if (!the_file_path) return false;
+    handle = fopen(the_file_path, "rb");
+    if (!handle) return false;
+    while (remaining) {
+        count = remaining < 256 ? remaining : 256;
+        if (fread(buffer, 1, count, handle) != count) { fclose(handle); return false; }
+        Sys_SwapIOPage(VICKY_IO_PAGE_FONT_AND_LUTS);
+        memcpy(font, buffer, count);
+        Sys_RestoreIOPage();
+        font += count;
+        remaining -= count;
+    }
+    return fclose(handle) == 0;
 }
 
 
@@ -754,80 +607,29 @@ error:
 // Returns false on any error
 bool File_LoadFileToEM(char* the_file_path, uint8_t em_bank_num)
 {
-	// LOGIC
-	//   does not care about file type: any time of file will allowed
-	//   loads all data into $28000 using DMA calls. 
-	//   does not display anything
-	//   return false on any error
-	
-	FILE*		the_file_handler;
-	bool		keep_going = true;
-	uint8_t		page_num = 0;
-	int16_t		s_bytes_read_from_disk;
-	char*		the_buffer = (char*)STORAGE_FILE_BUFFER_1;
-
-	if (the_file_path == NULL)
-	{
-		//LOG_ERR((_null_err, __func__ , __LINE__));
-		return false;
-	}
-
-	the_file_handler = fopen((char*)the_file_path, "r");
-	
-	if (the_file_handler == NULL)
-	{
-		//sprintf(global_string_buff1, "file '%s' could not be opened for text display", the_file_path);
-		//Buffer_NewMessage(global_string_buff1);
-		LOG_ERR(("%s %d: file '%s' could not be opened for reading", __func__ , __LINE__, the_file_path));
-		goto error;
-	}
-	
-
-	// loop until file is all read
-	do
-	{
-		// clear buffer so that on whatever the last read is, when data is smaller than buffer, it gets zero-terminated
-		memset(the_buffer,0,STORAGE_FILE_BUFFER_1_LEN);
-		
-		s_bytes_read_from_disk = fread(the_buffer, sizeof(char), STORAGE_FILE_BUFFER_1_LEN, the_file_handler);
-
-		if ( s_bytes_read_from_disk < 0)
-		{
-			//Buffer_NewMessage("s_bytes_read_from_disk < 0");
-			LOG_ERR(("%s %d: reading file '%s' resulted in error %i", __func__ , __LINE__, the_file_path, s_bytes_read_from_disk));
-			goto error;
-		}
-
-		if ( s_bytes_read_from_disk == 0)
-		{
-			//Buffer_NewMessage("s_bytes_read_from_disk == 0 (end of file)");
-			LOG_ERR(("%s %d: reading file '%s' produced 0 bytes", __func__ , __LINE__, the_file_path));
-			keep_going = false;
-		}
-	
-		if ( s_bytes_read_from_disk < STORAGE_FILE_BUFFER_1_LEN )
-		{
-			// we hit end of file
-			//Buffer_NewMessage("s_bytes_read_from_disk was less than full row");
-			//LOG_ERR(("%s %d: reading file '%s' expected %u bytes, got %i bytes", __func__ , __LINE__, the_file->file_name_, num_bytes_to_read, s_bytes_read_from_disk));
-			
-			// add a final 0 to buffer, to help prevent problems with future consumers of the EM data
-			the_buffer[s_bytes_read_from_disk] = 0;
-			
-			keep_going = false;
-		}
-
-		App_EMDataCopy((uint8_t*)STORAGE_FILE_BUFFER_1, em_bank_num, page_num++, PARAM_COPY_TO_EM);
-		
-	} while (keep_going == true);
-
-	fclose(the_file_handler);	
-	
-	return true;
-	
-error:
-	if (the_file_handler) fclose(the_file_handler);
-	return false;
+    FILE* handle;
+    uint16_t page = 0;
+    uint16_t bank;
+    size_t count;
+    uint8_t* buffer = (uint8_t*)STORAGE_FILE_BUFFER_1;
+    global_file_bytes_loaded = 0;
+    if (!the_file_path) return false;
+    handle = fopen(the_file_path, "rb");
+    if (!handle) return false;
+    while ((count = fread(buffer, 1, 256, handle)) != 0) {
+        bank = em_bank_num + page / PAGES_PER_BANK;
+        if ((uint32_t)global_file_bytes_loaded + count > global_file_load_limit || page >= 255 || bank <= OVERLAY_MEMSYSTEM || bank >= MEMORY_BANK_COUNT ||
+            bank == STRING_STORAGE_EM_SLOT || bank == FILENAME_STORAGE_EM_SLOT || bank == FILENAME_STORAGE_EM_SLOT + 1) {
+            fclose(handle);
+            Buffer_NewMessage(General_GetString(ID_STR_ERROR_ATTEMPT_TO_OVERWRITE_FM_RAM));
+            return false;
+        }
+        memset(buffer + count, 0, 256 - count);
+        App_EMDataCopy(buffer, em_bank_num, page++, PARAM_COPY_TO_EM);
+        global_file_bytes_loaded += count;
+    }
+    if (ferror(handle)) { fclose(handle); return false; }
+    return fclose(handle) == 0;
 }
 
 
@@ -840,53 +642,53 @@ error:
 // 	int16_t			bytes_free = 0;
 // 	struct InfoData*	the_info_data;
 // 	bool				success;
-// 	
-// 	// LOGIC: 
+//
+// 	// LOGIC:
 // 	//   AmigaDOS needs a lock on any file in a disk to return an Info object with the disk's free and used space.
 // 	//   Info() requires the struct InfoData to be long-word aligned, so we'll use AllocVec
-// 	
+//
 // 	if (the_file == NULL)
 // 	{
 // 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return -1;
 // 	}
-// 
+//
 // 	if ( (the_info_data = (struct InfoData*)AllocVec(sizeof(struct InfoData), MEMF_ANY) ) == NULL)
 // 	{
 // 		LOG_ERR(("%s %d: could not allocate memory for the struct InfoData", __func__ , __LINE__));
 // 		goto error;
 // 	}
 // 	LOG_ALLOC(("%s %d:	__ALLOC__	the_info_data	%p	size	%i", __func__ , __LINE__, the_info_data, sizeof(struct InfoData)));
-// 
+//
 // 	// try to get lock on the dictionary file
 // 	if (!(the_file_lock = Lock((CONST_STRPTR)the_file->file_path_, ACCESS_READ)))
 // 	{
 // 		LOG_ERR(("%s %d: Couldn't get lock on file '%s'", __func__ , __LINE__, the_file->file_path_));
 // 		goto error;
 // 	}
-// 	
+//
 // 	success = Info(the_file_lock, the_info_data);
-// 
+//
 // 	if ( success == false)
 // 	{
 // 		LOG_ERR(("%s %d: Couldn't get an InfoData object for disk containing file '%s'", __func__ , __LINE__, the_file->file_path_));
 // 		UnLock(the_file_lock);
 // 		goto error;
 // 	}
-// 	
+//
 // 	bytes_free = (the_info_data->id_NumBlocks - the_info_data->id_NumBlocksUsed) * the_info_data->id_BytesPerBlock;
-// 
+//
 // 	//DEBUG_OUT(("%s %d: Disk containing file '%s' has %li bytes free", __func__ , __LINE__, the_file->file_path_, bytes_free));
 // 	//DEBUG_OUT(("%s %d: Disk containing file '%s' has %li bytes used", __func__ , __LINE__, the_file->file_path_, the_info_data->id_NumBlocksUsed * the_info_data->id_BytesPerBlock));
-// 	
+//
 // 	UnLock(the_file_lock);
-// 	
+//
 // 	LOG_ALLOC(("%s %d:	__FREE__	the_info_data	%p	size	%i", __func__ , __LINE__, the_info_data, sizeof(struct InfoData)));
 // 	FreeVec(the_info_data);
 // 	the_info_data = NULL;
-// 
+//
 // 	return bytes_free;
-// 
+//
 // error:
 // 	if (the_info_data)	FreeVec(the_info_data);
 // 	return -1;
@@ -912,7 +714,7 @@ bool File_CheckForFile(char* the_file_path, uint8_t feedback_string_id)
 	FILE*		the_file_handler;
 
 	//Open file
-	the_file_handler = fopen(the_file_path, "r");	
+	the_file_handler = fopen(the_file_path, "r");
 
 	if (the_file_handler == NULL)
 	{
@@ -921,7 +723,7 @@ bool File_CheckForFile(char* the_file_path, uint8_t feedback_string_id)
 	}
 
 	fclose(the_file_handler);
-		
+
 	return true;
 }
 
@@ -931,13 +733,13 @@ bool File_Delete(char* the_file_path, bool is_directory)
 {
 	bool	success;
 
-	//sprintf(global_string_buff1, "the_file_path to delete: '%s', is dir=%u", the_file_path, is_directory);
+	//snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, "the_file_path to delete: '%s', is dir=%u", the_file_path, is_directory);
 	//Buffer_NewMessage(global_string_buff1);
-	
+
 	if (is_directory)
 	{
 		success = Kernel_DeleteFolder(the_file_path);
-		
+
 		// kernel doesn't actually detect folders, it just sets anything to directory if it has size=0. so incorrectly created files can't be deleted
 		// try again with Delete FILE
 		if (!success)
@@ -949,7 +751,7 @@ bool File_Delete(char* the_file_path, bool is_directory)
 	{
 		success = Kernel_DeleteFile(the_file_path);
 	}
-	
+
 	if (success == false)
 	{
 		LOG_ERR(("%s %d: not able to delete file '%s'", __func__ , __LINE__, the_file_path));
@@ -972,20 +774,20 @@ error:
 // {
 // 	bool					is_workbench_app;
 // 	WB2KFileType*			the_app_type;
-// 	
+//
 // 	// LOGIC:
 // 	//   if file is an executable, we don't need any args.
 // 	//   if file is not, we need to open the exec for it, and pass an arg for the file to be opened.
 // 	//   we classify apps into 2 categories: DOS and Workbench
 // 	//     DOS apps we call via CONSOLE (FILE_TYPE_CATEGORY_APP_DOS)
 // 	//     Workbench apps we start via CreateLaunch (task process) (FILE_TYPE_CATEGORY_APP_WB)
-// 
+//
 // 	if (the_file == NULL)
 // 	{
 // 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return false;
 // 	}
-// 
+//
 // 	if (the_file->file_type_->is_exec_ == true)
 // 	{
 // 		the_app_type = the_file->file_type_;
@@ -993,18 +795,18 @@ error:
 // 	else
 // 	{
 // 		// need to get the open-with app before we know if it's console or WB style startup
-// 
+//
 // 		if ( (the_app_type = File_GetOpenWithFileType(the_file)) == NULL)
 // 		{
 // 			LOG_WARN(("%s %d: could not get an open-with app type for file '%s'", __func__ , __LINE__, the_file->file_name_));
 // 			return false;
 // 		}
 // 	}
-// 	
+//
 // 	is_workbench_app = General_Strncasecmp(FileType_GetCategory(the_app_type), FILE_TYPE_CATEGORY_APP_DOS, FILE_TYPE_MAX_SIZE_CATEGORY);
-// 	
+//
 // 	//DEBUG_OUT(("%s %d: the open-with app category: workbench startup=%i", __func__ , __LINE__, is_workbench_app));
-// 
+//
 // 	if (is_workbench_app)
 // 	{
 // 		return File_OpenViaWorkbench(the_file);
@@ -1021,7 +823,7 @@ bool File_Rename(WB2KFileObject* the_file, const char* new_file_name, const char
 {
 	//char	temp_buff[80];
 	int8_t	result_code;
-	
+
 	// LOGIC:
 	//   remake file path using new name and old file path, then call Rename()
 
@@ -1031,9 +833,9 @@ bool File_Rename(WB2KFileObject* the_file, const char* new_file_name, const char
 		return false;
 	}
 
-	//sprintf(global_string_buff1, "old path: '%s', new path: '%s'", the_file->file_path_, new_file_path);
+	//snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, "old path: '%s', new path: '%s'", the_file->file_path_, new_file_path);
 	//Buffer_NewMessage(global_string_buff1);
-	
+
 	if ( (result_code = rename( old_file_path, new_file_path )) < 0)
 	{
 		//sprintf(temp_buff, "rename returned err code %i", result_code);
@@ -1045,18 +847,19 @@ bool File_Rename(WB2KFileObject* the_file, const char* new_file_name, const char
 	{
 		//DEBUG_OUT(("%s %d: Rename action succeeded; new_file_name='%s', pre-rename file name='%s'", __func__ , __LINE__, new_file_name, the_file->file_name_));
 		//DEBUG_OUT(("%s %d: Rename action succeeded; new_file_path='%s', pre-rename file path='%s'", __func__ , __LINE__, new_file_path, the_file->file_path_));
-		
+
 		if (File_UpdateFileName(the_file, new_file_name) == false)
 		{
 			LOG_ERR(("%s %d: Rename action failed with file '%s': could not update file name", __func__ , __LINE__, new_file_name));
 			goto error;
 		}
-		
-		the_file->file_type_ = File_GetFileTypeFromExtension(_CBM_T_REG, new_file_name);
+
+		if (!the_file->is_directory_)
+            the_file->file_type_ = File_GetFileTypeFromExtension(_CBM_T_REG, new_file_name);
 	}
 
 	return true;
-	
+
 error:
 	return false;
 }
@@ -1120,11 +923,11 @@ void File_Render(WB2KFileObject* the_file, bool as_selected, int8_t y_offset, bo
 	uint8_t	typex;
 	uint8_t	the_color;
 	int8_t	y;
-	
+
 	// LOGIC:
 	//   Panel is responsible for having flowed the content in a way that each file either has a displayable display_row_ value, or -1.
 	//   y_offset is the first displayable row of the parent panel
-	
+
 	if (the_file == NULL)
 	{
 		//LOG_ERR((_null_err, __func__ , __LINE__));
@@ -1139,29 +942,34 @@ void File_Render(WB2KFileObject* the_file, bool as_selected, int8_t y_offset, bo
 	{
 		the_color = LIST_INACTIVE_COLOR;
 	}
-	
+
 	x1 = the_file->x_;
 	x2 = the_file->x_ + (UI_PANEL_INNER_WIDTH - 1);
 	typex = x1 + UI_PANEL_FILETYPE_OFFSET;
 	sizex = typex + UI_PANEL_FILESIZE_OFFSET - 1; // "bytes" is 5 in len, but we are using 6 digit size, so start one before bytes.
-	
+
 	if (the_file->display_row_ != -1)
 	{
-		sprintf(global_string_buff1, "%6lu", the_file->size_);
+		if (the_file->size_ <= 999999UL)
+            snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, "%6lu", the_file->size_);
+        else if (the_file->size_ / 1024UL <= 99999UL)
+            snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, "%5luK", the_file->size_ / 1024UL);
+        else
+            snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, "%5luM", the_file->size_ / 1048576UL);
 		y = the_file->display_row_ + y_offset;
 		Text_FillBox(x1, y, x2, y, CH_SPACE, the_color, APP_BACKGROUND_COLOR);
 		Text_DrawStringAtXY( x1, y, App_GetFilenameFromEM(the_file), the_color, APP_BACKGROUND_COLOR);
 		Text_DrawStringAtXY( sizex, y, global_string_buff1, the_color, APP_BACKGROUND_COLOR);
 		Text_DrawStringAtXY( typex, y, File_GetFileTypeString(the_file->file_type_), the_color, APP_BACKGROUND_COLOR);
-		
+
 		if (as_selected == true)
 		{
 			Text_SetXY(x1,y);
 			Text_Invert(UI_PANEL_INNER_WIDTH);
-			
+
 			// show full path of file in the special status line under the file panels, above the comms
 			Text_FillBox( 0, UI_FULL_PATH_LINE_Y, 79, UI_FULL_PATH_LINE_Y, CH_SPACE, APP_BACKGROUND_COLOR, APP_BACKGROUND_COLOR);
-// 			sprintf(global_string_buff1, "%s (20%02u-%02u-%02u %02u:%02u:%02u)", the_file->file_path_, the_file->datetime_.year, the_file->datetime_.month, the_file->datetime_.day, the_file->datetime_.hour, the_file->datetime_.min, the_file->datetime_.sec);
+// 			snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, "%s (20%02u-%02u-%02u %02u:%02u:%02u)", the_file->file_path_, the_file->datetime_.year, the_file->datetime_.month, the_file->datetime_.day, the_file->datetime_.hour, the_file->datetime_.min, the_file->datetime_.sec);
 			Text_DrawStringAtXY( 0, UI_FULL_PATH_LINE_Y, App_GetFilenameFromEM(the_file), COLOR_GREEN, APP_BACKGROUND_COLOR);
 			//Text_DrawStringAtXY( 0, UI_FULL_PATH_LINE_Y, the_file->file_path_, COLOR_GREEN, APP_BACKGROUND_COLOR); // as of beta 16, files no longer know their path. until I add a "parent_folder_" property or similar, there's not a good way to get full path from this functino.
 		}
@@ -1177,7 +985,7 @@ void File_Render(WB2KFileObject* the_file, bool as_selected, int8_t y_offset, bo
 // void File_Print(void* the_payload)
 // {
 // 	WB2KFileObject*		this_file = (WB2KFileObject*)(the_payload);
-// 
+//
 // 	DEBUG_OUT(("|%-34s|%-1i|%-12lu|%-10s|%-8s|", App_GetFilenameFromEM(this_file->id_), this_file->selected_, this_file->size_, this_file->datetime_.dat_StrDate, this_file->datetime_.dat_StrTime));
 // }
 
@@ -1224,7 +1032,7 @@ bool File_CompareName(void* first_payload, void* second_payload)
 	App_GetFilenameFromEM(file_2);	// puts file2 filename into global_retrieved_em_filename
 	memcpy(file_compare_filename, global_retrieved_em_filename, FILE_MAX_FILENAME_SIZE); // copy from 1 to 2 so we can overwrite global_retrieved_em_filename
 	App_GetFilenameFromEM(file_1);	// puts file1 filename into global_retrieved_em_filename
-	
+
 	if (General_Strncasecmp(global_retrieved_em_filename, file_compare_filename, FILE_MAX_FILENAME_SIZE) > 0)
 	{
 		return true;
@@ -1240,7 +1048,7 @@ bool File_CompareName(void* first_payload, void* second_payload)
 // {
 // 	WB2KFileObject*		file_1 = (WB2KFileObject*)first_payload;
 // 	WB2KFileObject*		file_2 = (WB2KFileObject*)second_payload;
-// 
+//
 // 	if (file_1->datetime_.dat_Stamp.ds_Days > file_2->datetime_.dat_Stamp.ds_Days)
 // 	{
 // 		return true;
@@ -1272,5 +1080,5 @@ bool File_CompareName(void* first_payload, void* second_payload)
 // 		}
 // 	}
 // }
-// 
-// 
+//
+//

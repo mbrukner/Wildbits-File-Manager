@@ -40,13 +40,14 @@
 #define PARAM_RENDER_ALL_MENU_ITEMS			false	// parameter for Screen_RenderMenu
 
 // there are 12 buttons which can be accessed with the same code
-#define NUM_BUTTONS					27
+#define NUM_BUTTONS                     28
 
 // DEVICE actions
-#define BUTTON_ID_DEV_SD_CARD		0
-#define BUTTON_ID_DEV_FLOPPY_1		(BUTTON_ID_DEV_SD_CARD + 1)
-#define BUTTON_ID_DEV_FLOPPY_2		(BUTTON_ID_DEV_FLOPPY_1 + 1)
-#define BUTTON_ID_DEV_RAM			(BUTTON_ID_DEV_FLOPPY_2 + 1)
+#define BUTTON_ID_DEV_EXTERNAL_SD		0
+#define BUTTON_ID_DEV_INTERNAL_SD       (BUTTON_ID_DEV_EXTERNAL_SD + 1)
+#define BUTTON_ID_DEV_IEC_8             (BUTTON_ID_DEV_INTERNAL_SD + 1)
+#define BUTTON_ID_DEV_IEC_9		(BUTTON_ID_DEV_IEC_8 + 1)
+#define BUTTON_ID_DEV_RAM			(BUTTON_ID_DEV_IEC_9 + 1)
 #define BUTTON_ID_DEV_FLASH			(BUTTON_ID_DEV_RAM + 1)
 #define BUTTON_ID_REFRESH			(BUTTON_ID_DEV_FLASH + 1)
 #define BUTTON_ID_FORMAT			(BUTTON_ID_REFRESH + 1)
@@ -159,7 +160,7 @@
 #define CH_CHECKERBOARD					199		// useful for progress bars as a slot fully used up
 #define CH_UNDERSCORE					148		// this is one line up from a pure underscore, but works if text right under it. 0x5f	// '_'
 #define CH_OVERSCORE					0x0e	// opposite of '_'
-#define CH_SORT_ICON					248		// downward disclosure triangle in f256 fonts
+#define CH_SORT_ICON					248		// downward disclosure triangle in wildbits fonts
 
 
 /*****************************************************************************/
@@ -196,12 +197,12 @@ typedef struct UI_Button
 typedef struct UI_Menu_Enabler_Info
 {
 	uint8_t		file_type_;
-	bool		for_disk_;	
+	bool		for_disk_;
 	bool		for_flash_;
 	bool		is_kup_;
 	bool		is_meatloaf_;
 	bool		other_panel_is_meatloaf_;
-	bool		other_panel_for_disk_;	
+	bool		other_panel_for_disk_;
 	bool		other_panel_for_flash_;
 } UI_Menu_Enabler_Info;
 
@@ -229,9 +230,9 @@ uint8_t Screen_GetValidUserInput(void);
 // does not render
 void Screen_UpdateMenuStates(UI_Menu_Enabler_Info* the_enabling_info);
 
-// renders the menu items, as either active or inactive, as appropriate. 
+// renders the menu items, as either active or inactive, as appropriate.
 // active/inactive and changed/not changed must previously have been set
-// if sparse_render is true, only those items that have a different enable decision since last render will be re-rendered. Set sparse_render to false if drawing menu for first time or after clearing screen, etc. 
+// if sparse_render is true, only those items that have a different enable decision since last render will be re-rendered. Set sparse_render to false if drawing menu for first time or after clearing screen, etc.
 void Screen_RenderMenu(bool sparse_render);
 
 // have screen function draw the sort triangle in the right place
@@ -240,7 +241,7 @@ void Screen_UpdateSortIcons(uint8_t the_panel_x, void* the_sort_compare_function
 // have screen function an icon for meatloaf mode, or clear it
 void Screen_UpdateMeatloafIcon(uint8_t the_panel_x, bool meatloaf_mode);
 
-// display information about f/manager
+// display information about Wildbits File Manager
 void Screen_ShowAppAboutInfo(void);
 
 // draw just the 3 column headers in the specified panel
@@ -259,8 +260,8 @@ bool Screen_ShowUserTwoButtonDialog(char* dialog_title, uint8_t dialog_body_stri
 
 // utility function for checking user input for either normal string or series of numbers
 // if preceded by "#" will check for list of 2-digit hex numbers. eg, (#FF,AA,01,00,EE).
-// will convert to bytes and terminate with 0. In example above, it will return 5 as the len. 
-// either way, will return the length of the set of characters that should be thought of as one unit. 
+// will convert to bytes and terminate with 0. In example above, it will return 5 as the len.
+// either way, will return the length of the set of characters that should be thought of as one unit.
 uint8_t ScreenEvaluateUserStringForHexSeries(char** the_string);
 
 

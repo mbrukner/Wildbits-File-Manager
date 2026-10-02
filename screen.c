@@ -25,6 +25,7 @@
 #include "kernel.h"
 #include "keyboard.h"
 #include "memory.h"
+#include "overlay_em.h"
 #include "sys.h"
 #include "text.h"
 #include "strings.h"
@@ -35,8 +36,8 @@
 #include <stdio.h>
 #include <string.h>
 
-// F256 includes
-#include "f256.h"
+// WILDBITS includes
+#include "wildbits.h"
 
 
 
@@ -63,48 +64,44 @@ static File_Panel		panel[NUM_PANELS] =
 static UI_Button		uibutton[NUM_BUTTONS] =
 {
 	// DEVICE actions
-	{BUTTON_ID_DEV_SD_CARD,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DEV_CMD_Y,		ID_STR_DEV_SD,				UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SWITCH_TO_SD	}, 
-	{BUTTON_ID_DEV_FLOPPY_1,	UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DEV_CMD_Y + 1,	ID_STR_DEV_FLOPPY_1,		UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SWITCH_TO_FLOPPY_1	}, 
-	{BUTTON_ID_DEV_FLOPPY_2,	UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DEV_CMD_Y + 2,	ID_STR_DEV_FLOPPY_2,		UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SWITCH_TO_FLOPPY_2	}, 
-	{BUTTON_ID_DEV_RAM,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DEV_CMD_Y + 3,	ID_STR_DEV_RAM,				UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_SWITCH_TO_RAM	}, 
-	{BUTTON_ID_DEV_FLASH,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DEV_CMD_Y + 4,	ID_STR_DEV_FLASH,			UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_SWITCH_TO_FLASH	}, 
-	{BUTTON_ID_REFRESH,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DEV_CMD_Y + 5,	ID_STR_DEV_REFRESH_LISTING,	UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_REFRESH_PANEL	}, 
-	{BUTTON_ID_FORMAT,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DEV_CMD_Y + 6,	ID_STR_DEV_FORMAT,			UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_FORMAT_DISK	}, 
+	{BUTTON_ID_DEV_EXTERNAL_SD,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DEV_CMD_Y,		ID_STR_DEV_SD,				UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SWITCH_TO_EXTERNAL_SD	},
+    {BUTTON_ID_DEV_INTERNAL_SD, UI_MIDDLE_AREA_START_X, UI_MIDDLE_AREA_DEV_CMD_Y + 1, ID_STR_DEV_INTERNAL_SD, UI_BUTTON_STATE_INACTIVE, UI_BUTTON_STATE_CHANGED, ACTION_SWITCH_TO_INTERNAL_SD},
+	{BUTTON_ID_DEV_IEC_8,	UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DEV_CMD_Y + 2,	ID_STR_DEV_IEC_8,		UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SWITCH_TO_IEC_8	},
+	{BUTTON_ID_DEV_IEC_9,	UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DEV_CMD_Y + 3,	ID_STR_DEV_IEC_9,		UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SWITCH_TO_IEC_9	},
+	{BUTTON_ID_DEV_RAM,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DEV_CMD_Y + 4,	ID_STR_DEV_RAM,				UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_SWITCH_TO_RAM	},
+	{BUTTON_ID_DEV_FLASH,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DEV_CMD_Y + 5,	ID_STR_DEV_FLASH,			UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_SWITCH_TO_FLASH	},
+	{BUTTON_ID_REFRESH,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DEV_CMD_Y + 6,	ID_STR_DEV_REFRESH_LISTING,	UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_REFRESH_PANEL	},
+	{BUTTON_ID_FORMAT,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DEV_CMD_Y + 7,	ID_STR_DEV_FORMAT,			UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_FORMAT_DISK	},
 	// DIRECTORY actions
-	{BUTTON_ID_MAKE_DIR,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DIR_CMD_Y,		ID_STR_DEV_MAKE_DIR,		UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_NEW_FOLDER	}, 
-	{BUTTON_ID_SORT_BY_TYPE,	UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DIR_CMD_Y + 1,	ID_STR_DEV_SORT_BY_TYPE,	UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SORT_BY_TYPE	}, 
-	{BUTTON_ID_SORT_BY_NAME,	UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DIR_CMD_Y + 2,	ID_STR_DEV_SORT_BY_NAME,	UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SORT_BY_NAME	}, 
-	{BUTTON_ID_SORT_BY_SIZE,	UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DIR_CMD_Y + 3,	ID_STR_DEV_SORT_BY_SIZE,	UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SORT_BY_SIZE	}, 
+	{BUTTON_ID_MAKE_DIR,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DIR_CMD_Y,		ID_STR_DEV_MAKE_DIR,		UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_NEW_FOLDER	},
+	{BUTTON_ID_SORT_BY_TYPE,	UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DIR_CMD_Y + 1,	ID_STR_DEV_SORT_BY_TYPE,	UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SORT_BY_TYPE	},
+	{BUTTON_ID_SORT_BY_NAME,	UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DIR_CMD_Y + 2,	ID_STR_DEV_SORT_BY_NAME,	UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SORT_BY_NAME	},
+	{BUTTON_ID_SORT_BY_SIZE,	UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_DIR_CMD_Y + 3,	ID_STR_DEV_SORT_BY_SIZE,	UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SORT_BY_SIZE	},
 	// FILE actions
-	{BUTTON_ID_COPY,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y,		ID_STR_FILE_COPY_RIGHT,		UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_COPY	}, 
-	{BUTTON_ID_DELETE,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 1,	ID_STR_FILE_DELETE,			UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_DELETE_ALT	}, 
-	{BUTTON_ID_DUPLICATE,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 2,	ID_STR_FILE_DUP,			UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_DUPLICATE	}, 
-	{BUTTON_ID_RENAME,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 3,	ID_STR_FILE_RENAME,			UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_RENAME	}, 
+	{BUTTON_ID_COPY,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y,		ID_STR_FILE_COPY_RIGHT,		UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_COPY	},
+	{BUTTON_ID_DELETE,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 1,	ID_STR_FILE_DELETE,			UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_DELETE_ALT	},
+	{BUTTON_ID_DUPLICATE,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 2,	ID_STR_FILE_DUP,			UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_DUPLICATE	},
+	{BUTTON_ID_RENAME,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 3,	ID_STR_FILE_RENAME,			UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_RENAME	},
 	// FILE & BANK actions
-	{BUTTON_ID_TEXT_VIEW,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 4,	ID_STR_FILE_TEXT_PREVIEW,	UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_VIEW_AS_TEXT	}, 
-	{BUTTON_ID_HEX_VIEW,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 5,	ID_STR_FILE_HEX_PREVIEW,	UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_VIEW_AS_HEX	}, 
-	{BUTTON_ID_LOAD,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 6,	ID_STR_FILE_LOAD,			UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_LOAD	}, 
+	{BUTTON_ID_TEXT_VIEW,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 4,	ID_STR_FILE_TEXT_PREVIEW,	UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_VIEW_AS_TEXT	},
+	{BUTTON_ID_HEX_VIEW,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 5,	ID_STR_FILE_HEX_PREVIEW,	UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_VIEW_AS_HEX	},
+	{BUTTON_ID_LOAD,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 6,	ID_STR_FILE_LOAD,			UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_LOAD	},
 	// BANK actions
-	{BUTTON_ID_BANK_FILL,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 7,	ID_STR_BANK_FILL,			UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_FILL_MEMORY	}, 
-	{BUTTON_ID_BANK_CLEAR,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 8,	ID_STR_BANK_CLEAR,			UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_CLEAR_MEMORY	}, 
-	{BUTTON_ID_BANK_FIND,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 9,	ID_STR_BANK_FIND,			UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SEARCH_MEMORY	}, 
-	{BUTTON_ID_BANK_FIND_NEXT,	UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 10,	ID_STR_BANK_FIND_NEXT,		UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SEARCH_MEMORY	}, 
-	
-	
+	{BUTTON_ID_BANK_FILL,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 7,	ID_STR_BANK_FILL,			UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_FILL_MEMORY	},
+	{BUTTON_ID_BANK_CLEAR,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 8,	ID_STR_BANK_CLEAR,			UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_CLEAR_MEMORY	},
+	{BUTTON_ID_BANK_FIND,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 9,	ID_STR_BANK_FIND,			UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SEARCH_MEMORY	},
+	{BUTTON_ID_BANK_FIND_NEXT,	UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_FILE_CMD_Y + 10,	ID_STR_BANK_FIND_NEXT,		UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_SEARCH_MEMORY_NEXT	},
+
+
 	// APP actions
-	{BUTTON_ID_SET_CLOCK,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_APP_CMD_Y,		ID_STR_APP_SET_CLOCK,		UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_SET_TIME	}, 
-	{BUTTON_ID_ABOUT,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_APP_CMD_Y + 1,	ID_STR_APP_ABOUT,			UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_ABOUT	}, 
-	{BUTTON_ID_EXIT_TO_BASIC,	UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_APP_CMD_Y + 2,	ID_STR_APP_EXIT_TO_BASIC,	UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_EXIT_TO_BASIC	}, 
-	{BUTTON_ID_EXIT_TO_DOS,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_APP_CMD_Y + 3,	ID_STR_APP_EXIT_TO_DOS,		UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_EXIT_TO_DOS	}, 
-	{BUTTON_ID_QUIT,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_APP_CMD_Y + 4,	ID_STR_APP_QUIT,			UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_QUIT	}, 
+	{BUTTON_ID_SET_CLOCK,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_APP_CMD_Y,		ID_STR_APP_SET_CLOCK,		UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_SET_TIME	},
+	{BUTTON_ID_ABOUT,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_APP_CMD_Y + 1,	ID_STR_APP_ABOUT,			UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_ABOUT	},
+	{BUTTON_ID_EXIT_TO_BASIC,	UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_APP_CMD_Y + 2,	ID_STR_APP_EXIT_TO_BASIC,	UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_EXIT_TO_BASIC	},
+	{BUTTON_ID_EXIT_TO_DOS,		UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_APP_CMD_Y + 3,	ID_STR_APP_EXIT_TO_DOS,		UI_BUTTON_STATE_ACTIVE,		UI_BUTTON_STATE_CHANGED,	ACTION_EXIT_TO_DOS	},
+	{BUTTON_ID_QUIT,			UI_MIDDLE_AREA_START_X,		UI_MIDDLE_AREA_APP_CMD_Y + 4,	ID_STR_APP_QUIT,			UI_BUTTON_STATE_INACTIVE,	UI_BUTTON_STATE_CHANGED,	ACTION_QUIT	},
 };
- 
-static uint8_t			screen_titlebar[UI_BYTE_SIZE_OF_APP_TITLEBAR] = 
-{
-	148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,148,
-7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,141,142,143,144,145,146,147,32,102,47,109,97,110,97,103,101,114,32,0x46,0x32,0x35,0x36,32,140,139,138,137,136,135,134,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
-153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,153,
-};
+
+
 
 
 /*****************************************************************************/
@@ -140,7 +137,7 @@ extern uint8_t				io_bank_value_kernel;	// stores value for the physical bank po
 
 void Screen_DrawUI(void);
 
-// attempts to convert the passed character to a byte value by treating it as hex. 
+// attempts to convert the passed character to a byte value by treating it as hex.
 // if not hex, it will return -1
 int16_t ScreenConvertHexCharToByteValue(uint8_t the_char);
 
@@ -157,15 +154,16 @@ void Screen_DrawUI(void)
 	uint8_t		y1;
 	uint8_t		x2;
 	uint8_t		y2;
-	
+
 	Text_ClearScreen(APP_FOREGROUND_COLOR, APP_BACKGROUND_COLOR);
-	
+
 	// draw the title bar at top. 3x80
-	Text_CopyMemBoxLinearBuffer((uint8_t*)&screen_titlebar, 0, 0, 79, 2, PARAM_COPY_TO_SCREEN, PARAM_FOR_TEXT_CHAR);
+	Text_DrawHLine(0, 0, 80, CH_UNDERSCORE, APP_ACCENT_COLOR, APP_BACKGROUND_COLOR, CHAR_AND_ATTR);
+    Text_DrawStringAtXY(29, 1, "Wildbits File Manager", APP_FOREGROUND_COLOR, APP_BACKGROUND_COLOR);
+    Text_DrawHLine(0, 2, 80, CH_OVERSCORE, APP_ACCENT_COLOR, APP_BACKGROUND_COLOR, CHAR_AND_ATTR);
 	Text_FillBoxAttrOnly(0, 0, 79, 0, APP_ACCENT_COLOR, APP_BACKGROUND_COLOR);
 	Text_FillBoxAttrOnly(0, 2, 79, 2, APP_ACCENT_COLOR, APP_BACKGROUND_COLOR);
-	Text_SetXY(48,1);
-	Text_Invert(7);	// right-hand side vertical bars need to be inversed to grow from thin to fat
+		// right-hand side vertical bars need to be inversed to grow from thin to fat
 
 
 	// draw panels
@@ -180,22 +178,22 @@ void Screen_DrawUI(void)
 		Text_SetCharAtXY(x1, y1, SC_T_RIGHT);
 		Text_SetCharAtXY(x1 + (UI_PANEL_TAB_WIDTH - 1), y1, SC_T_UP);
 	}
-	
+
 	// draw device menu
 	Text_DrawHLine(UI_MIDDLE_AREA_START_X, UI_MIDDLE_AREA_DEV_MENU_Y, UI_MIDDLE_AREA_WIDTH, CH_UNDERSCORE, MENU_ACCENT_COLOR, APP_BACKGROUND_COLOR, CHAR_AND_ATTR);
 	Text_DrawStringAtXY(UI_MIDDLE_AREA_START_X, UI_MIDDLE_AREA_DEV_MENU_Y + 1, General_GetString(ID_STR_MENU_DEVICE), MENU_FOREGROUND_COLOR, APP_BACKGROUND_COLOR);
 	Text_DrawHLine(UI_MIDDLE_AREA_START_X, UI_MIDDLE_AREA_DEV_MENU_Y + 2, UI_MIDDLE_AREA_WIDTH, CH_OVERSCORE, MENU_ACCENT_COLOR, APP_BACKGROUND_COLOR, CHAR_AND_ATTR);
-		
+
 	// draw directory menu
 	Text_DrawHLine(UI_MIDDLE_AREA_START_X, UI_MIDDLE_AREA_DIR_MENU_Y, UI_MIDDLE_AREA_WIDTH, CH_UNDERSCORE, MENU_ACCENT_COLOR, APP_BACKGROUND_COLOR, CHAR_AND_ATTR);
 	Text_DrawStringAtXY(UI_MIDDLE_AREA_START_X, UI_MIDDLE_AREA_DIR_MENU_Y + 1, General_GetString(ID_STR_MENU_DIRECTORY), MENU_FOREGROUND_COLOR, APP_BACKGROUND_COLOR);
 	Text_DrawHLine(UI_MIDDLE_AREA_START_X, UI_MIDDLE_AREA_DIR_MENU_Y + 2, UI_MIDDLE_AREA_WIDTH, CH_OVERSCORE, MENU_ACCENT_COLOR, APP_BACKGROUND_COLOR, CHAR_AND_ATTR);
-		
+
 	// draw file menu
 	Text_DrawHLine(UI_MIDDLE_AREA_START_X, UI_MIDDLE_AREA_FILE_MENU_Y, UI_MIDDLE_AREA_WIDTH, CH_UNDERSCORE, MENU_ACCENT_COLOR, APP_BACKGROUND_COLOR, CHAR_AND_ATTR);
 	Text_DrawStringAtXY(UI_MIDDLE_AREA_START_X, UI_MIDDLE_AREA_FILE_MENU_Y + 1, General_GetString(ID_STR_MENU_FILE), MENU_FOREGROUND_COLOR, APP_BACKGROUND_COLOR);
 	Text_DrawHLine(UI_MIDDLE_AREA_START_X, UI_MIDDLE_AREA_FILE_MENU_Y + 2, UI_MIDDLE_AREA_WIDTH, CH_OVERSCORE, MENU_ACCENT_COLOR, APP_BACKGROUND_COLOR, CHAR_AND_ATTR);
-		
+
 	// draw app menu
 	Text_DrawHLine(UI_MIDDLE_AREA_START_X, UI_MIDDLE_AREA_APP_MENU_Y, UI_MIDDLE_AREA_WIDTH, CH_UNDERSCORE, MENU_ACCENT_COLOR, APP_BACKGROUND_COLOR, CHAR_AND_ATTR);
 	Text_DrawStringAtXY(UI_MIDDLE_AREA_START_X, UI_MIDDLE_AREA_APP_MENU_Y + 1, General_GetString(ID_STR_MENU_APP), MENU_FOREGROUND_COLOR, APP_BACKGROUND_COLOR);
@@ -208,7 +206,7 @@ void Screen_DrawUI(void)
 }
 
 
-// attempts to convert the passed character to a byte value by treating it as hex. 
+// attempts to convert the passed character to a byte value by treating it as hex.
 // if not hex, it will return -1
 int16_t ScreenConvertHexCharToByteValue(uint8_t the_char)
 {
@@ -231,7 +229,7 @@ int16_t ScreenConvertHexCharToByteValue(uint8_t the_char)
 	{
 		return -1;
 	}
-	
+
 	return the_char;
 }
 
@@ -276,28 +274,15 @@ void Screen_DrawPanelHeader(uint8_t x, bool for_disk)
 void Screen_SetInitialMenuStates(uint8_t num_disk_systems)
 {
 	uint8_t		i;
-	
-	for (i=0; i < num_disk_systems; i++)
-	{
-		// technically, could just do something like "uibutton[global_connected_device[i]].active_ = true, but if the IDs change, it would break. and button IDs are not explicitly DESIGNED to be same as disk IDs.
-		//DEBUG_OUT(("%s %d: for num_disk_systems=%u, global_connected_device[i]=%u", __func__ , __LINE__, num_disk_systems, global_connected_device[i]));
 
-		if (global_connected_device[i] == 0)
-		{
-			uibutton[BUTTON_ID_DEV_SD_CARD].active_ = true;
-			uibutton[BUTTON_ID_DEV_SD_CARD].changed_ = true;
-		}
-		else if (global_connected_device[i] == 1)
-		{
-			uibutton[BUTTON_ID_DEV_FLOPPY_1].active_ = true;
-			uibutton[BUTTON_ID_DEV_FLOPPY_1].changed_ = true;
-		}
-		else if (global_connected_device[i] == 2)
-		{
-			uibutton[BUTTON_ID_DEV_FLOPPY_2].active_ = true;
-			uibutton[BUTTON_ID_DEV_FLOPPY_2].changed_ = true;
-		}
-	}
+    for (i = 0; i < DEVICE_MAX_DEVICE_COUNT; ++i) {
+        uibutton[i].active_ = false;
+        uibutton[i].changed_ = true;
+    }
+    for (i = 0; i < num_disk_systems; ++i) {
+        if (global_connected_device[i] >= 0 && global_connected_device[i] < DEVICE_MAX_DEVICE_COUNT)
+            uibutton[global_connected_device[i]].active_ = true;
+    }
 
 	if (global_started_from_flash == true)
 	{
@@ -310,7 +295,7 @@ void Screen_SetInitialMenuStates(uint8_t num_disk_systems)
 		uibutton[BUTTON_ID_QUIT].changed_ = true;
 	}
 
-	//DEBUG_OUT(("%s %d: start from flash=%u, quit button active=%u SD card active=%u", __func__ , __LINE__, global_started_from_flash, uibutton[BUTTON_ID_QUIT].active_, uibutton[BUTTON_ID_DEV_SD_CARD].active_));
+	//DEBUG_OUT(("%s %d: start from flash=%u, quit button active=%u SD card active=%u", __func__ , __LINE__, global_started_from_flash, uibutton[BUTTON_ID_QUIT].active_, uibutton[BUTTON_ID_DEV_EXTERNAL_SD].active_));
 }
 
 
@@ -321,21 +306,23 @@ uint8_t Screen_GetValidUserInput(void)
 {
 	uint8_t		user_input;
 	uint8_t		i;
-	
+
 	user_input = Keyboard_GetChar();
+    if (user_input == ACTION_DELETE) user_input = ACTION_DELETE_ALT;
+    if (user_input == ACTION_SELECT) user_input = ACTION_LOAD;
 
 	// check input against active menu items
 	for (i = 0; i < NUM_BUTTONS; i++)
 	{
 		//DEBUG_OUT(("%s %d: btn %i change=%u, active=%u, %s", __func__ , __LINE__, i, uibutton[i].changed_, uibutton[i].active_, General_GetString(uibutton[i].string_id_)));
-		
+
 		// check if the key entered matches the key for any menu items
 		if (uibutton[i].key_ == user_input)
 		{
 			// found a match, but is this menu enabled or disabled?
 			if (uibutton[i].active_ == true)
 			{
-				// valid entry. 
+				// valid entry.
 				return user_input;
 			}
 			else
@@ -364,7 +351,7 @@ void Screen_UpdateMenuStates(UI_Menu_Enabler_Info* the_enabling_info)
 	bool	other_panel_for_disk = the_enabling_info->other_panel_for_disk_;
 	bool	other_panel_for_flash = the_enabling_info->other_panel_for_flash_;
 	bool	other_panel_is_meatloaf = the_enabling_info->other_panel_is_meatloaf_;
-	
+
 // LOGIC:
 //       - Pass it some info on the currently selected item and panel:
 //         - Panel:
@@ -375,18 +362,18 @@ void Screen_UpdateMenuStates(UI_Menu_Enabler_Info* the_enabling_info)
 //             - File type (if file type=0, then assume no file selected/no file available)
 //         - Also info on the selected item in the other panel:
 //             - Bank vs file
-//             - File type? 
+//             - File type?
 //             - Flash vs RAM
 
 	//DEBUG_OUT(("%s %d: for disk=%u, for flash=%u, is kup=%u, file_type=%u, other for disk=%u, other for flash=%u", __func__ , __LINE__, for_disk, for_flash, is_kup, the_file_type, other_panel_for_disk, other_panel_for_flash));
-		
+
 // #define _CBM_T_REG      0x10U   /* Bit set for regular files */
 // #define _CBM_T_HEADER   0x05U   /* Disk header / title */
 // #define _CBM_T_DIR      0x02U   /* IDE64 and CMD sub-directory */
 // #define FNX_FILETYPE_FONT	200	// any 2k file ending in .fnt
 // #define FNX_FILETYPE_EXE	201	// any .pgz, etc executable
-// #define FNX_FILETYPE_BASIC	202	// a .bas file that f/manager will try to pass to SuperBASIC
-// #define FNX_FILETYPE_MUSIC	203	// a .mod file that f/manager will try to pass to modojr
+// #define FNX_FILETYPE_BASIC	202	// a .bas file that Wildbits File Manager will try to pass to SuperBASIC
+// #define FNX_FILETYPE_MUSIC	203	// a .mod file that Wildbits File Manager will try to pass to modojr
 // #define FNX_FILETYPE_IMAGE	204 // a .256 or .lbm image file.
 
 	// - Always active items that don’t need to be in screen overlay and don’t need activation check:
@@ -398,7 +385,7 @@ void Screen_UpdateMenuStates(UI_Menu_Enabler_Info* the_enabling_info)
     //    - Quit
     //    - 0, 1, 2 (SD card, floppy1, floppy2)
     // will set these in a different function that is only called once, on startup.
-	
+
 	if (for_disk == false)
 	{
 		// handle memory system-specific menu items
@@ -442,7 +429,7 @@ void Screen_UpdateMenuStates(UI_Menu_Enabler_Info* the_enabling_info)
 				uibutton[BUTTON_ID_BANK_FILL].active_ = true;
 				uibutton[BUTTON_ID_BANK_FILL].changed_ = true;
 			}
-	
+
 			if (uibutton[BUTTON_ID_BANK_CLEAR].active_ != true)
 			{
 				uibutton[BUTTON_ID_BANK_CLEAR].active_ = true;
@@ -456,7 +443,7 @@ void Screen_UpdateMenuStates(UI_Menu_Enabler_Info* the_enabling_info)
 				uibutton[BUTTON_ID_BANK_FILL].active_ = false;
 				uibutton[BUTTON_ID_BANK_FILL].changed_ = true;
 			}
-	
+
 			if (uibutton[BUTTON_ID_BANK_CLEAR].active_ != false)
 			{
 				uibutton[BUTTON_ID_BANK_CLEAR].active_ = false;
@@ -480,7 +467,7 @@ void Screen_UpdateMenuStates(UI_Menu_Enabler_Info* the_enabling_info)
 				uibutton[BUTTON_ID_LOAD].changed_ = true;
 			}
 		}
-		
+
 		// for copy, the other panel can't be flash, but in all other combinations, it should be active.
 		if (other_panel_for_flash == true)
 		{
@@ -567,25 +554,25 @@ void Screen_UpdateMenuStates(UI_Menu_Enabler_Info* the_enabling_info)
 				uibutton[BUTTON_ID_DELETE].active_ = false;
 				uibutton[BUTTON_ID_DELETE].changed_ = true;
 			}
-	
+
 			if (uibutton[BUTTON_ID_DUPLICATE].active_ != false)
 			{
 				uibutton[BUTTON_ID_DUPLICATE].active_ = false;
 				uibutton[BUTTON_ID_DUPLICATE].changed_ = true;
 			}
-	
+
 			if (uibutton[BUTTON_ID_RENAME].active_ != false)
 			{
 				uibutton[BUTTON_ID_RENAME].active_ = false;
 				uibutton[BUTTON_ID_RENAME].changed_ = true;
 			}
-	
+
 			if (uibutton[BUTTON_ID_FORMAT].active_ != false)
 			{
 				uibutton[BUTTON_ID_FORMAT].active_ = false;
 				uibutton[BUTTON_ID_FORMAT].changed_ = true;
 			}
-	
+
 			if (uibutton[BUTTON_ID_MAKE_DIR].active_ != false)
 			{
 				uibutton[BUTTON_ID_MAKE_DIR].active_ = false;
@@ -599,25 +586,25 @@ void Screen_UpdateMenuStates(UI_Menu_Enabler_Info* the_enabling_info)
 				uibutton[BUTTON_ID_DELETE].active_ = true;
 				uibutton[BUTTON_ID_DELETE].changed_ = true;
 			}
-	
+
 			if (uibutton[BUTTON_ID_DUPLICATE].active_ != true)
 			{
 				uibutton[BUTTON_ID_DUPLICATE].active_ = true;
 				uibutton[BUTTON_ID_DUPLICATE].changed_ = true;
 			}
-	
+
 			if (uibutton[BUTTON_ID_RENAME].active_ != true)
 			{
 				uibutton[BUTTON_ID_RENAME].active_ = true;
 				uibutton[BUTTON_ID_RENAME].changed_ = true;
 			}
-	
+
 			if (uibutton[BUTTON_ID_FORMAT].active_ != true)
 			{
 				uibutton[BUTTON_ID_FORMAT].active_ = true;
 				uibutton[BUTTON_ID_FORMAT].changed_ = true;
 			}
-	
+
 			if (uibutton[BUTTON_ID_MAKE_DIR].active_ != true)
 			{
 				uibutton[BUTTON_ID_MAKE_DIR].active_ = true;
@@ -643,7 +630,7 @@ void Screen_UpdateMenuStates(UI_Menu_Enabler_Info* the_enabling_info)
 			uibutton[BUTTON_ID_SORT_BY_SIZE].changed_ = true;
 		}
 
-		if (the_file_type == _CBM_T_DIR || the_file_type == FNX_FILETYPE_FONT || the_file_type == FNX_FILETYPE_EXE || the_file_type == FNX_FILETYPE_IMAGE || the_file_type == FNX_FILETYPE_MUSIC || the_file_type == FNX_FILETYPE_MIDI || the_file_type == FNX_FILETYPE_MP3 || the_file_type == FNX_FILETYPE_OGG || the_file_type == FNX_FILETYPE_VGM || the_file_type == FNX_FILETYPE_RSD || the_file_type == FNX_FILETYPE_BASIC)
+		if (the_file_type == _CBM_T_DIR || the_file_type == FNX_FILETYPE_FONT || the_file_type == FNX_FILETYPE_EXE || the_file_type == FNX_FILETYPE_IMAGE || the_file_type == FNX_FILETYPE_MUSIC || the_file_type == FNX_FILETYPE_MIDI || the_file_type == FNX_FILETYPE_MP3 || the_file_type == FNX_FILETYPE_OGG || the_file_type == FNX_FILETYPE_VGM || the_file_type == FNX_FILETYPE_RSD || the_file_type == FNX_FILETYPE_BASIC || the_file_type == FNX_FILETYPE_TEXT || the_file_type == FNX_FILETYPE_WAV)
 		{
 			if (uibutton[BUTTON_ID_LOAD].active_ != true)
 			{
@@ -719,9 +706,9 @@ void Screen_UpdateMenuStates(UI_Menu_Enabler_Info* the_enabling_info)
 }
 
 
-// renders the menu items, as either active or inactive, as appropriate. 
+// renders the menu items, as either active or inactive, as appropriate.
 // active/inactive and changed/not changed must previously have been set
-// if sparse_render is true, only those items that have a different enable decision since last render will be re-rendered. Set sparse_render to false if drawing menu for first time or after clearing screen, etc. 
+// if sparse_render is true, only those items that have a different enable decision since last render will be re-rendered. Set sparse_render to false if drawing menu for first time or after clearing screen, etc.
 void Screen_RenderMenu(bool sparse_render)
 {
 	uint8_t		i;
@@ -733,7 +720,7 @@ void Screen_RenderMenu(bool sparse_render)
 	for (i = 0; i < NUM_BUTTONS; i++)
 	{
 		//DEBUG_OUT(("%s %d: btn %i change=%u, active=%u, %s", __func__ , __LINE__, i, uibutton[i].changed_, uibutton[i].active_, General_GetString(uibutton[i].string_id_)));
-		
+
 		if (uibutton[i].changed_ == true || sparse_render == false)
 		{
 			text_color = (uibutton[i].active_ == true ? MENU_FOREGROUND_COLOR : MENU_INACTIVE_COLOR);
@@ -776,16 +763,16 @@ void Screen_Render(void)
 void Screen_UpdateSortIcons(uint8_t the_panel_x, void* the_sort_compare_function)
 {
 	// LOGIC:
-	//    we want to draw CH_SORT_ICON immediately to the right of the column header which is now being sorted. 
-	//    the positions for the sort icons are defined by UI_PANEL_FILENAME_SORT_OFFSET, etc. 
+	//    we want to draw CH_SORT_ICON immediately to the right of the column header which is now being sorted.
+	//    the positions for the sort icons are defined by UI_PANEL_FILENAME_SORT_OFFSET, etc.
 	//    we also need to undraw whatever had been set
-	//    we are passed a pointer to the current compare function. we can use that to figure out what type of sort icon to draw. 
-	
+	//    we are passed a pointer to the current compare function. we can use that to figure out what type of sort icon to draw.
+
 	// clear old icons
 	Text_SetCharAtXY(the_panel_x + UI_PANEL_FILENAME_SORT_OFFSET, UI_VIEW_PANEL_HEADER_Y, CH_SPACE);
 	Text_SetCharAtXY(the_panel_x + UI_PANEL_FILETYPE_SORT_OFFSET, UI_VIEW_PANEL_HEADER_Y, CH_SPACE);
 	Text_SetCharAtXY(the_panel_x + UI_PANEL_FILESIZE_SORT_OFFSET, UI_VIEW_PANEL_HEADER_Y, CH_SPACE);
-	
+
 	// set new ones
 	if (the_sort_compare_function == (void*)&File_CompareName)
 	{
@@ -807,9 +794,9 @@ void Screen_UpdateMeatloafIcon(uint8_t the_panel_x, bool meatloaf_mode)
 {
 	// LOGIC:
 	//    we want to draw an icon representing "meatloaf" mode immediately to the right of the panel title tab
-	
+
 	Text_SetXY(the_panel_x + UI_LEFT_PANEL_TITLE_TAB_WIDTH, UI_VIEW_PANEL_TITLE_TAB_Y2);
-	
+
 	if (meatloaf_mode == true)
 	{
 		Text_SetChar(CH_UC_M);
@@ -821,7 +808,7 @@ void Screen_UpdateMeatloafIcon(uint8_t the_panel_x, bool meatloaf_mode)
 }
 
 
-// display information about f/manager
+// display information about Wildbits File Manager
 void Screen_ShowAppAboutInfo(void)
 {
 	// give credit for pexec flash loader, if we started from flash and not disk
@@ -829,13 +816,13 @@ void Screen_ShowAppAboutInfo(void)
 	{
 		Buffer_NewMessage(General_GetString(ID_STR_ABOUT_FLASH_LOADER));
 	}
-	
+
 	// show app name, version, and credit
-	sprintf(global_string_buff1, General_GetString(ID_STR_ABOUT_FMANAGER), CH_MISC_COPY, MAJOR_VERSION, MINOR_VERSION, UPDATE_VERSION);
+	snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, General_GetString(ID_STR_ABOUT_FMANAGER), CH_MISC_COPY, MAJOR_VERSION, MINOR_VERSION, UPDATE_VERSION);
 	Buffer_NewMessage(global_string_buff1);
-	
+
 	// also show current bytes free
-	sprintf(global_string_buff1, General_GetString(ID_STR_N_BYTES_FREE), _heapmemavail());
+	snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, General_GetString(ID_STR_N_BYTES_FREE), _heapmemavail());
 	Buffer_NewMessage(global_string_buff1);
 }
 
@@ -849,28 +836,28 @@ char* Screen_GetStringFromUser(char* dialog_title, char* dialog_body, char* star
 	bool				success;
 	uint8_t				orig_dialog_width;
 	uint8_t				temp_dialog_width;
-	
+
 	// copy title and body text
 	General_Strlcpy((char*)&global_dlg_title, dialog_title, 36);
 	General_Strlcpy((char*)&global_dlg_body_msg, dialog_body, 70);
 
 	// copy the starter string into the edit buffer so user can edit
 	General_Strlcpy(global_string_buff2, starter_string, max_len + 1);
-	
+
 	// adjust dialog width temporarily, if necessary and possible
 	orig_dialog_width = global_dlg.width_;
 	temp_dialog_width = General_Strnlen(starter_string,  max_len);
-	
-	// account for situation where no starter string, but there is a length limit. 
+
+	// account for situation where no starter string, but there is a length limit.
 	if (temp_dialog_width < max_len)
 	{
 		temp_dialog_width = max_len;
 	}
-	
+
 	temp_dialog_width += 2; // +2 is for box draw chars
-	
+
 	DEBUG_OUT(("%s %d: orig_dialog_width=%u, temp width=%u, max_len=%u, starter='%s'", __func__ , __LINE__, orig_dialog_width, temp_dialog_width, max_len, starter_string));
-	
+
 	if (temp_dialog_width < orig_dialog_width)
 	{
 		temp_dialog_width = orig_dialog_width - 2;
@@ -880,7 +867,7 @@ char* Screen_GetStringFromUser(char* dialog_title, char* dialog_body, char* star
 		global_dlg.width_ = temp_dialog_width;
 		temp_dialog_width -= 2;
 	}
-	
+
 	success = Text_DisplayTextEntryDialog(&global_dlg, (char*)&temp_screen_buffer_char, (char*)&temp_screen_buffer_attr, global_string_buff2, max_len, DIALOG_ACCENT_COLOR, DIALOG_FOREGROUND_COLOR, DIALOG_BACKGROUND_COLOR);
 
 	// restore normal dialog width
@@ -891,7 +878,7 @@ char* Screen_GetStringFromUser(char* dialog_title, char* dialog_body, char* star
 	{
 		return NULL;
 	}
-	
+
 	return global_string_buff2;
 }
 
@@ -905,7 +892,7 @@ bool Screen_ShowUserTwoButtonDialog(char* dialog_title, uint8_t dialog_body_stri
 	General_Strlcpy((char*)&global_dlg_body_msg, General_GetString(dialog_body_string_id), 70);
 	General_Strlcpy((char*)&global_dlg_button[0], General_GetString(negative_btn_label_string_id), 10);
 	General_Strlcpy((char*)&global_dlg_button[1], General_GetString(positive_btn_label_string_id), 10);
-					
+
 	global_dlg.num_buttons_ = 2;
 
 	return Text_DisplayDialog(&global_dlg, (char*)&temp_screen_buffer_char, (char*)&temp_screen_buffer_attr, DIALOG_ACCENT_COLOR, DIALOG_FOREGROUND_COLOR, DIALOG_BACKGROUND_COLOR, COLOR_RED, COLOR_GREEN);
@@ -914,69 +901,24 @@ bool Screen_ShowUserTwoButtonDialog(char* dialog_title, uint8_t dialog_body_stri
 
 // utility function for checking user input for either normal string or series of numbers
 // if preceded by "#" will check for list of 2-digit hex numbers. eg, (#FF,AA,01,00,EE).
-// will convert to bytes and terminate with 0. In example above, it will return 5 as the len. 
-// either way, will return the length of the set of characters that should be thought of as one unit. 
+// will convert to bytes and terminate with 0. In example above, it will return 5 as the len.
+// either way, will return the length of the set of characters that should be thought of as one unit.
 uint8_t ScreenEvaluateUserStringForHexSeries(char** the_string)
 {
-	uint8_t		this_byte;
-	int16_t		byte[2];
-	uint8_t		the_len = 0;
-	char*		local_string = *the_string;
-	char		converted_storage[16];	// 32 chars is max search len, but 1 for #, takes 2 for each byte, but + for terminator
-	
-	// LOGIC:
-	//   if the string is just normal text, we don't change it, we just return the len
-	//   if the string is a series of hex chars, we overwrite from the beginning of the string with the byte values
-
-	//DEBUG_OUT(("%s %d: local_string='%s'", __func__ , __LINE__, local_string));
-	
-	this_byte = *local_string++;
-
-	//DEBUG_OUT(("%s %d: first byte=%x ('%c')", __func__ , __LINE__, this_byte, this_byte));
-	
-	if (this_byte != '#')
-	{
-		// treat string as a normal string
-		--local_string;
-		//DEBUG_OUT(("%s %d: doesn't start with #, treating as string with len %u", __func__ , __LINE__, strlen(local_string)));
-		return strlen(local_string);
-	}
-
-	// assume user was trying to provide series of hex numbers
-	while (*local_string)
-	{
-		byte[0] = ScreenConvertHexCharToByteValue(*local_string++);
-		byte[1] = ScreenConvertHexCharToByteValue(*local_string++);
-		this_byte = *local_string++; // will be comma if there is another number encoded here
-		//DEBUG_OUT(("%s %d: byte0=%x, byte1=%x, this_byte=%x (%c)", __func__ , __LINE__, byte[0], byte[1], this_byte, this_byte));
-		//DEBUG_OUT(("%s %d: the_len=%u, val=%x", __func__ , __LINE__, the_len, (uint8_t)byte[0] * (uint8_t)16 + (uint8_t)byte[1]));
-		
-		if (byte[0] < 0 || byte[1] < 0)
-		{
-			// one or both chars were not hex chars. abandon effort.
-			goto conversion_complete;
-		}
-		
-		converted_storage[the_len++] = (uint8_t)byte[0] * (uint8_t)16 + (uint8_t)byte[1];
-		//DEBUG_OUT(("%s %d: converted_storage[the_len-1]=%x", __func__ , __LINE__, converted_storage[the_len-1]));
-		
-		if (this_byte == 0)
-		{
-			// hit end of search string
-			goto conversion_complete;
-		}
-		else if (this_byte != ',')
-		{
-			// not sure what's next, but let's give user benefit of doubt and assume they left out commas and just entered FFEEDD0102 etc.
-			--local_string;
-			//DEBUG_OUT(("%s %d: third char wasn't comma. the_len=%u, converted='%s'", __func__ , __LINE__, the_len, converted));
-		}
-	}
-	
-conversion_complete:
-	converted_storage[the_len] = 0; // final terminator for good measure.
-	memcpy(*the_string, converted_storage, the_len);
-	//DEBUG_OUT(("%s %d: final conversion = %x%x%x%x%x%x, len=%u", __func__ , __LINE__, converted_storage[0], converted_storage[1], converted_storage[2], converted_storage[3], converted_storage[4], converted_storage[5], the_len));
-	return the_len;
+    char* source = *the_string;
+    char* target = source;
+    uint8_t count = 0;
+    int16_t high, low;
+    if (*source != '#') return strlen(source) <= MAX_SEARCH_PHRASE_LEN ? strlen(source) : 0;
+    ++source;
+    while (*source && count < MAX_SEARCH_PHRASE_LEN) {
+        high = ScreenConvertHexCharToByteValue(*source++);
+        if (!*source) return 0;
+        low = ScreenConvertHexCharToByteValue(*source++);
+        if (high < 0 || low < 0) return 0;
+        target[count++] = (uint8_t)(high * 16 + low);
+        if (*source == ',') { ++source; if (!*source) return 0; }
+    }
+    return *source ? 0 : count;
 }
 

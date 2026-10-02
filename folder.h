@@ -4,7 +4,7 @@
  *  Created on: Nov 21, 2020
  *      Author: micahbly
  *
- *  This is a huge cut-down of the Amiga WorkBench2000 code, for F256 f/manager and B128 f/manager
+ *  This is a huge cut-down of the Amiga WorkBench2000 code, for WILDBITS Wildbits File Manager and B128 Wildbits File Manager
  *    8-bit version started Jan 12, 2023
  */
 
@@ -76,16 +76,16 @@
 
 #define FNX_FILETYPE_FONT	200	// any 2k file ending in .fnt
 #define FNX_FILETYPE_EXE	201	// any .pgz, etc executable
-#define FNX_FILETYPE_BASIC	202	// a .bas file that f/manager will try to pass to SuperBASIC
-#define FNX_FILETYPE_MUSIC	203	// a .mod file that f/manager will try to pass to modojr
+#define FNX_FILETYPE_BASIC	202	// a .bas file that Wildbits File Manager will try to pass to SuperBASIC
+#define FNX_FILETYPE_MUSIC	203	// a .mod file that Wildbits File Manager will try to pass to modojr
 #define FNX_FILETYPE_IMAGE	204 // a .256 or .lbm image file.
 #define FNX_FILETYPE_TEXT	205 // a .txt or .src text file that can/will be opened in a text editor
-#define FNX_FILETYPE_MIDI	206 // a .mid file that f/manager will try to pass to midiplayer.pgz
-#define FNX_FILETYPE_MP3	207 // a .mp3 file that f/manager will try to pass to audioplayer.pgz
-#define FNX_FILETYPE_OGG	208 // a .ogg file that f/manager will try to pass to audioplayer.pgz
-#define FNX_FILETYPE_WAV	209 // a .wav file that f/manager will try to pass to audioplayer.pgz
-#define FNX_FILETYPE_VGM	210 // a .vgm file that f/manager will try to pass to vgmplayer.pgz
-#define FNX_FILETYPE_RSD	211 // a .rsd (raw SID) file that f/manager will try to pass to rsdplayer.pgz
+#define FNX_FILETYPE_MIDI	206 // a .mid file that Wildbits File Manager will try to pass to midiplayer.pgz
+#define FNX_FILETYPE_MP3	207 // a .mp3 file that Wildbits File Manager will try to pass to audioplayer.pgz
+#define FNX_FILETYPE_OGG	208 // a .ogg file that Wildbits File Manager will try to pass to audioplayer.pgz
+#define FNX_FILETYPE_WAV	209 // a .wav file that Wildbits File Manager will try to pass to audioplayer.pgz
+#define FNX_FILETYPE_VGM	210 // a .vgm file that Wildbits File Manager will try to pass to vgmplayer.pgz
+#define FNX_FILETYPE_RSD	211 // a .rsd (raw SID) file that Wildbits File Manager will try to pass to rsdplayer.pgz
 
 
 
@@ -120,15 +120,15 @@ typedef struct FILEmimic
 typedef struct WB2KFolderObject
 {
 	WB2KList**			list_;
-	char*				file_name_;							// rather than having whole folder object, we will only use a name now 
-	char*				file_path_;							// rather than having in file, where it gets stored a lot, will just have in folder. 
+	char*				file_name_;							// rather than having whole folder object, we will only use a name now
+	char*				file_path_;							// rather than having in file, where it gets stored a lot, will just have in folder.
 	uint16_t			file_count_;
-	int16_t				cur_row_;							// 0-n: selected file num. 0=first file. -1 if no file. 
+	int16_t				cur_row_;							// 0-n: selected file num. 0=first file. -1 if no file.
 //	uint32_t			total_bytes_;
 // 	uint32_t			selected_bytes_;
 // 	uint16_t			total_blocks_;
 // 	uint16_t			selected_blocks_;
-	bool				is_meatloaf_;						// flag set if the folder is currently configured in meatloaf mode. 
+	bool				is_meatloaf_;						// flag set if the folder is currently configured in meatloaf mode.
 	uint8_t				device_number_;						// For CBM, 8-9-10-11. for fnx, 0-1-2
 } WB2KFolderObject;
 
@@ -221,9 +221,8 @@ WB2KFileObject* Folder_FindFileByRow(WB2KFolderObject* the_folder, uint8_t the_r
 bool Folder_AddNewFile(WB2KFolderObject* the_folder, WB2KFileObject* the_file);
 
 // Add a file object to the list of files without checking for duplicates. This variant makes a copy of the file before assigning it. Use case: MoveFiles or CopyFiles.
-// returns true in all cases. 
+// returns true in all cases.
 // NOTE: this is part of series of functions designed to be called by Window_ModifyOpenFolders(), and all need to return bools.
-bool Folder_AddNewFileAsCopy(WB2KFolderObject* the_folder, WB2KFileObject* the_file);
 
 // // removes the passed list item from the list of files in the folder. Does NOT delete file from disk. Does NOT delete the file object.
 // // returns true if a matching file was found and successfully removed.
@@ -236,7 +235,7 @@ bool Folder_AddNewFileAsCopy(WB2KFolderObject* the_folder, WB2KFileObject* the_f
 // // removes the passed list item from the list of files in the folder. Does NOT delete file from disk. Optionally frees the file object.
 // void Folder_RemoveFileListItem(WB2KFolderObject* the_folder, WB2KList* the_item, bool destroy_the_file_object);
 
-// // Create a new folder on disk, and a new file object for it, and assign it to this folder. 
+// // Create a new folder on disk, and a new file object for it, and assign it to this folder.
 // // if try_until_successful is set, will rename automatically with trailing number until it can make a new folder (by avoiding already-used names)
 // bool Folder_CreateNewFolder(WB2KFolderObject* the_folder, char* the_file_name, bool try_until_successful);
 

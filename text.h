@@ -8,7 +8,7 @@
  */
 
 // This is a cut-down, semi-API-compatible version of the OS/f text.c file from Lich King (Foenix)
-// adapted for Foenix F256 Jr starting November 29, 2022
+// adapted for Foenix WILDBITS Jr starting November 29, 2022
 
 #ifndef LIB_TEXT_H_
 #define LIB_TEXT_H_
@@ -56,7 +56,7 @@
 #include <stdint.h>
 
 
-// F256 includes
+// WILDBITS includes
 
 
 // cc65 includes
@@ -66,14 +66,14 @@
 /*                            Macro Definitions                              */
 /*****************************************************************************/
 
-#define SCREEN_NUM_COLS			80	// physical screens are all 80 columns wide in f256jr
+#define SCREEN_NUM_COLS			80	// physical screens are all 80 columns wide in wildbits
 #define SCREEN_NUM_ROWS			60
 #define SCREEN_LAST_COL			(SCREEN_NUM_COLS - 1)
 #define SCREEN_LAST_ROW			(SCREEN_NUM_ROWS - 1)
 #define SCREEN_TOTAL_BYTES		(SCREEN_NUM_COLS * SCREEN_NUM_ROWS)
-#define SCREEN_TEXT_MEMORY_LOC			0xC000	// start of text AND attribute memory for F256jr. text is is I/O page 2, attributes in I/O page 3. 
+#define SCREEN_TEXT_MEMORY_LOC			0xC000	// start of text AND attribute memory for Wildbits. text is is I/O page 2, attributes in I/O page 3.
 
-// named F256JR Default Colors (at least in SuperBASIC)
+// named WILDBITS_JR Default Colors (at least in SuperBASIC)
 #define COLOR_BLACK				(uint8_t)0x00
 #define COLOR_MEDIUM_GRAY		(uint8_t)0x01
 #define COLOR_BLUE				(uint8_t)0x02
@@ -91,7 +91,7 @@
 #define COLOR_BRIGHT_YELLOW		(uint8_t)0x0E
 #define COLOR_BRIGHT_WHITE		(uint8_t)0x0F
 
-// update: the numbers shown in vicky2 file in morfe don't match up to what's shown on screen, at least with a2560 config. eg, 20/00/00 is not a super dark blue, it's some totally bright thing. need to spend some time mapping these out better. But since user configurable, will wait until real machine comes and I can make sure of what's in flash rom. 
+// update: the numbers shown in vicky2 file in morfe don't match up to what's shown on screen, at least with a2560 config. eg, 20/00/00 is not a super dark blue, it's some totally bright thing. need to spend some time mapping these out better. But since user configurable, will wait until real machine comes and I can make sure of what's in flash rom.
 
 // Named function parameters
 #define PARAM_FOR_TEXT_ATTR				true	///< param for functions with for_attr
@@ -106,7 +106,7 @@
 #define PARAM_ENCLOSE_HEADER			true	///< param for text window creation function. Using this will result in title having another text-line drawn immediately under it
 #define PARAM_DO_NOT_ENCLOSE_HEADER		false	///< param for text window creation function. Using this will result in title being place in 'body' area of window
 
-#define PARAM_USE_OVERWRITE_MODE		true	///< param for routines like Text_GetStringFromUser that handle getting string input from user. Using this will start routine in overwrite mode, so that each character typed overwrites any that was there before. 
+#define PARAM_USE_OVERWRITE_MODE		true	///< param for routines like Text_GetStringFromUser that handle getting string input from user. Using this will start routine in overwrite mode, so that each character typed overwrites any that was there before.
 #define PARAM_USE_INSERT_MODE			false	///< param for routines like Text_GetStringFromUser that handle getting string input from user. Using this will start routine in insert mode, so that each character typed causes any characters to the right of the cursor position to move over to make room for the new character.
 
 #define PARAM_USE_PRIMARY_FONT_SLOT		true	///< param for font loading and switching functions. Using this will result in loading or switching to the primary text font in VICKY memory.
@@ -114,10 +114,10 @@
 
 
 /*****************************************************************************/
-/*            Char codes for drawing elements (f256jr_std)                   */
+/*            Char codes for drawing elements (wildbits_std)                   */
 /*****************************************************************************/
 
-// (see f256.h)
+// (see wildbits.h)
 
 /*****************************************************************************/
 /*                               Enumerations                                */
@@ -140,7 +140,7 @@
 #define DIALOG_BTN_3	2
 
 
-#define TEXT_DIALOG_MAX_BTN_LABEL_LEN	77	// F256jr supports max of 80 chars wide screen, and 2 chars required for drawing borders, and 1 char space to right required. 
+#define TEXT_DIALOG_MAX_BTN_LABEL_LEN	77	// Wildbits supports max of 80 chars wide screen, and 2 chars required for drawing borders, and 1 char space to right required.
 
 
 
@@ -186,23 +186,23 @@ typedef struct TextDialogTemplate
 // **** Block copy functions ****
 
 //! Copies characters and attributes from the left, to the right, for the passed length, backfilling with the char and attr passed
-//!   Shift never extends beyond the current row of text. 
-//! @param	working_buffer - valid pointer to a block of memory at least SCREEN_NUM_COLS in size, to act as a temporary line buffer for the operation. 
+//!   Shift never extends beyond the current row of text.
+//! @param	working_buffer - valid pointer to a block of memory at least SCREEN_NUM_COLS in size, to act as a temporary line buffer for the operation.
 //! @param	x - the starting horizontal position, between 0 and the screen's text_cols_vis_ - 1
 //! @param	y - the starting vertical position, between 0 and the screen's text_rows_vis_ - 1
 //! @param	shift_count - the number of character positions text will be shifted. eg, '1' will shift everything to the right of x by 1 character.
-//! @param	backfill_char - the character to place in the space freed up by copy. eg, if you shift 10 chars at positions 60-69 to 70-79, this char will be used to fill the slots from 60-69. 
+//! @param	backfill_char - the character to place in the space freed up by copy. eg, if you shift 10 chars at positions 60-69 to 70-79, this char will be used to fill the slots from 60-69.
 //! @param	backfill_fore_color - foreground color that will be applied to the space opened up by the copy
 //! @param	backfill_back_color - background color that will be applied to the space opened up by the copy
 //! @return	Returns false on any error/invalid input.
 bool Text_ShiftTextAndAttrRight(uint8_t* working_buffer, uint8_t x, uint8_t y, uint8_t shift_count, uint8_t backfill_char, uint8_t backfill_fore_color, uint8_t backfill_back_color);
 
 //! Copies characters and attributes from the right, to the left, for the passed length, backfilling with the char and attr passed
-//!   Shift never extends beyond the current row of text. 
+//!   Shift never extends beyond the current row of text.
 //! @param	x - the starting horizontal position, between 0 and the screen's text_cols_vis_ - 1
 //! @param	y - the starting vertical position, between 0 and the screen's text_rows_vis_ - 1
 //! @param	shift_count - the number of character positions text will be shifted. eg, '1' will shift everything to the left of x by 1 character.
-//! @param	backfill_char - the character to place in the space freed up by copy. eg, if you shift 10 chars at positions 70-79 to 60-69, this char will be used to fill the slots from 70-79. 
+//! @param	backfill_char - the character to place in the space freed up by copy. eg, if you shift 10 chars at positions 70-79 to 60-69, this char will be used to fill the slots from 70-79.
 //! @param	backfill_fore_color - foreground color that will be applied to the space opened up by the copy
 //! @param	backfill_back_color - background color that will be applied to the space opened up by the copy
 //! @return	Returns false on any error/invalid input.
@@ -237,9 +237,9 @@ bool Text_ScrollTextAndAttrRowsUp(uint8_t y1, uint8_t y2);
 bool Text_ScrollTextAndAttrRowsDown(uint8_t y1, uint8_t y2);
 
 //! Copy a linear run of text or attr to or from a linear memory buffer.
-//!   Use this if you do not have a full-sized (screen-size) off-screen buffer, and do not have a rectangular area 
-//!   of the screen to copy to/from, but instead want to copy a single linear stream to/from a particular cursor position. 
-//! @param	the_buffer - valid pointer to a block of memory to hold (or alternatively act as the source of) the character or attribute data for the specified screen memory. This will be read from first byte to last byte, without skipping. e.g., if you want to copy a 227 characters of text from the middle of the screen to this buffer, the buffer must be 227 bytes in length, and data will be written contiguously to it. 
+//!   Use this if you do not have a full-sized (screen-size) off-screen buffer, and do not have a rectangular area
+//!   of the screen to copy to/from, but instead want to copy a single linear stream to/from a particular cursor position.
+//! @param	the_buffer - valid pointer to a block of memory to hold (or alternatively act as the source of) the character or attribute data for the specified screen memory. This will be read from first byte to last byte, without skipping. e.g., if you want to copy a 227 characters of text from the middle of the screen to this buffer, the buffer must be 227 bytes in length, and data will be written contiguously to it.
 //! @param	x - the leftmost horizontal position, between 0 and the screen's text_cols_vis_ - 1
 //! @param	y - the uppermost vertical position, between 0 and the screen's text_rows_vis_ - 1
 //! @param	to_screen - true to copy to the screen from the buffer, false to copy from the screen to the buffer. Recommend using PARAM_COPY_TO_SCREEN/PARAM_COPY_FROM_SCREEN.
@@ -249,7 +249,7 @@ bool Text_CopyMemLinearBuffer(uint8_t* the_buffer, uint8_t x, uint8_t y, uint16_
 
 //! Copy a rectangular area of text or attr to or from a linear memory buffer.
 //!   Use this if you do not have a full-sized (screen-size) off-screen buffer, but instead have a block perhaps just big enough to hold the rect.
-//! @param	the_buffer - valid pointer to a block of memory to hold (or alternatively act as the source of) the character or attribute data for the specified rectangle of screen memory. This will be read from first byte to last byte, without skipping. e.g., if you want to copy a 40x5 rectangle of text from the middle of the screen to this buffer, the buffer must be 40*5=200 bytes in length, and data will be written contiguously to it. 
+//! @param	the_buffer - valid pointer to a block of memory to hold (or alternatively act as the source of) the character or attribute data for the specified rectangle of screen memory. This will be read from first byte to last byte, without skipping. e.g., if you want to copy a 40x5 rectangle of text from the middle of the screen to this buffer, the buffer must be 40*5=200 bytes in length, and data will be written contiguously to it.
 //! @param	x1 - the leftmost horizontal position, between 0 and the screen's text_cols_vis_ - 1
 //! @param	y1 - the uppermost vertical position, between 0 and the screen's text_rows_vis_ - 1
 //! @param	x2 - the rightmost horizontal position, between 0 and the screen's text_cols_vis_ - 1
@@ -277,7 +277,7 @@ bool Text_CopyMemBox(uint8_t* the_buffer, uint8_t x1, uint8_t y1, uint8_t x2, ui
 //! Clear the text screen and reset foreground and background colors
 void Text_ClearScreen(uint8_t fore_color, uint8_t back_color);
 
-//! Fill attribute or text char memory. 
+//! Fill attribute or text char memory.
 //! @param	for_attr - true to work with attribute data, false to work character data. Recommend using PARAM_FOR_TEXT_ATTR/PARAM_FOR_TEXT_CHAR.
 //! @param	the_fill - either a 1-byte character code, or a 1-byte attribute code (foreground in high nibble, background in low nibble)
 //! @return	Returns false on any error/invalid input.
@@ -511,7 +511,7 @@ void Text_DrawBoxCoordsFancy(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uin
 
 //! Draw a string at a specified x, y coord, also setting the color attributes.
 //! If it is too long to display on the line it started, it will be truncated at the right edge of the screen.
-//! No word wrap is performed. 
+//! No word wrap is performed.
 //! @param	x - the starting horizontal position, between 0 and the screen's text_cols_vis_ - 1
 //! @param	y - the starting vertical position, between 0 and the screen's text_rows_vis_ - 1
 //! @param	the_string - the null-terminated string to be drawn
@@ -522,7 +522,7 @@ bool Text_DrawStringAtXY(uint8_t x, uint8_t y, char* the_string, uint8_t fore_co
 
 //! Draw a string at the current X/Y position, also setting the color attributes.
 //! If it is too long to display on the line it started, it will be truncated at the right edge of the screen.
-//! No word wrap is performed. 
+//! No word wrap is performed.
 //! @param	the_string - the null-terminated string to be drawn
 //! @param	fore_color - Index to the desired foreground color (0-15). The predefined macro constants may be used (COLOR_DK_RED, etc.), but be aware that the colors are not fixed, and may not correspond to the names if the LUT in RAM has been modified.
 //! @param	back_color - Index to the desired background color (0-15). The predefined macro constants may be used (COLOR_DK_RED, etc.), but be aware that the colors are not fixed, and may not correspond to the names if the LUT in RAM has been modified.
@@ -539,7 +539,7 @@ bool Text_DrawString(char* the_string, uint8_t fore_color, uint8_t back_color);
 
 // general function for drawing a "window"-like text object using draw chars
 // can supply a title, and specify if it should optionally draw another row under the title
-// can supply background color, line color, and text color. 
+// can supply background color, line color, and text color.
 // can say if you want background cleared
 // can pass a pointer to a buffer where the text/color under the window will be saved before drawing (for easy restore later)
 //! @param	accent_color - Index to the desired accent color (0-15). Window frame, etc.
