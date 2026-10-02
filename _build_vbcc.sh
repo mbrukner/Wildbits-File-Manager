@@ -1,20 +1,21 @@
 #!/bin/zsh
 
-DEV=~/dev/bbedit-workspace-foenix
-PROJECT=$DEV/F256jr-FileManager
+#DEV=~/dev/bbedit-workspace-foenix
+DEV=~/Retro/Wildbits
+PROJECT=$DEV/F256-FileManager
 CONFIG_DIR=$PROJECT/config_cc65
 
 # name that will be used in files
-VERSION_STRING="1.1b9"
-#VERSION_STRING="1.1b9_noIEC"
+#VERSION_STRING="1.1b9"
+VERSION_STRING="1.1b9_noIEC"
 
 # debug logging levels: 1=error, 2=warn, 3=info, 4=debug general, 5=allocations
-#DEBUG_DEF_1="-DLOG_LEVEL_1"
+DEBUG_DEF_1="-DLOG_LEVEL_1"
 #DEBUG_DEF_2="-DLOG_LEVEL_2"
 #DEBUG_DEF_3="-DLOG_LEVEL_3"
 #DEBUG_DEF_4="-DLOG_LEVEL_4"
 #DEBUG_DEF_5="-DLOG_LEVEL_5"
-DEBUG_DEF_1=
+#DEBUG_DEF_1=
 DEBUG_DEF_2=
 DEBUG_DEF_3=
 DEBUG_DEF_4=
@@ -75,7 +76,7 @@ cc65 -g --cpu $CC65CPU -t $CC65TGT $OPTI -I $CONFIG_DIR $TARGET_DEFS $PLATFORM_D
 cc65 -g --cpu $CC65CPU -t $CC65TGT $OPTI -I $CONFIG_DIR $TARGET_DEFS $PLATFORM_DEFS $DEBUG_DEF_1 $DEBUG_DEF_2 $DEBUG_DEF_3 $DEBUG_DEF_4 $DEBUG_DEF_5 $DEBUG_VIA_SERIAL $STACK_CHECK -T text.c -o $BUILD_DIR/text.s
 
 # Kernel access
-cc65 -g --cpu 65C02 -t $CC65TGT $OPTI -I $CONFIG_DIR $TARGET_DEFS $PLATFORM_DEFS -T kernel.c -o $BUILD_DIR/kernel.s
+cc65 -g --cpu 65C02 -t $CC65TGT $OPTI -I $CONFIG_DIR $TARGET_DEFS $PLATFORM_DEFS $DEBUG_DEF_1 $DEBUG_DEF_2 $DEBUG_DEF_3 $DEBUG_DEF_4 $DEBUG_DEF_5 $DEBUG_VIA_SERIAL -T kernel.c -o $BUILD_DIR/kernel.s
 
 #build strings binary from strings.txt
 perl strings2binary.pl strings
@@ -149,7 +150,7 @@ rm *.hdr
 cp fm.pgZ fm_install/disk/
 
 # copy pgz binary to SD Card on F256 via fnxmanager
-python3.9 $FOENIXMGR/FoenixMgr/fnxmgr.py --copy fm.pgZ
+#python3 $FOENIXMGR/FoenixMgr/fnxmgr.py --copy fm.pgZ
 
 
 # copy latest readme, etc files to the install dir

@@ -237,6 +237,7 @@ void App_Initialize(void)
 	// scan which devices are connected, so we know what panels can access
 	Buffer_NewMessage(General_GetString(ID_STR_MSG_SCANNING));
 	app_connected_drive_count = App_ScanDevices();
+	LOG_INFO(("%s %d: devices: %d", __func__ , __LINE__, app_connected_drive_count));
 
 	sprintf(global_string_buff1, General_GetString(ID_STR_MSG_SHOW_DRIVE_COUNT), app_connected_drive_count);
 	Buffer_NewMessage(global_string_buff1);

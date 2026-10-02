@@ -113,7 +113,7 @@ FMMemorySystem* MemSys_NewOrReset(FMMemorySystem* existing_memsys, bool is_flash
 	{
 		if ( (the_memsys = (FMMemorySystem*)calloc(1, sizeof(FMMemorySystem)) ) == NULL)
 		{
-			LOG_ERR(("%s %d: could not allocate memory to create new memory system object", __func__ , __LINE__));
+			LOG_ERR((_allocate_memory_err, __func__ , __LINE__));
 			goto error;
 		}
 		LOG_ALLOC(("%s %d:	__ALLOC__	the_memsys	%p	size	%i", __func__ , __LINE__, the_memsys, sizeof(FMMemorySystem)));
@@ -144,7 +144,7 @@ void MemSys_Destroy(FMMemorySystem** the_memsys)
 {
 	if (*the_memsys == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_FOLDER_TO_DESTROY_WAS_NULL);	// crash early, crash often
 	}
 
@@ -164,7 +164,7 @@ void MemSys_ResetAllBanks(FMMemorySystem* the_memsys)
 	
 	if (the_memsys == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_DESTROY_ALL_MEMSYS_WAS_NULL);	// crash early, crash often
 	}
 	
@@ -189,7 +189,7 @@ void MemSys_SetCurrentRow(FMMemorySystem* the_memsys, int16_t the_row_number)
 {
 	if (the_memsys == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_SET_CURR_ROW_FOLDER_WAS_NULL);	// crash early, crash often
 	}
 	
@@ -206,7 +206,7 @@ int16_t MemSys_GetCurrentRow(FMMemorySystem* the_memsys)
 {
 	if (the_memsys == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_MEMSYS_GET_CURR_ROW_FOLDER_WAS_NULL);	// crash early, crash often
 	}
 	
@@ -219,7 +219,7 @@ int16_t MemSys_GetCurrentRow(FMMemorySystem* the_memsys)
 // {
 // 	if (the_memsys == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+//		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		//App_Exit(ERROR_MEMSYS_GET_CURR_ROW_FOLDER_WAS_NULL);	// crash early, crash often
 // 		return NULL;
 // 	}
@@ -238,7 +238,7 @@ uint8_t MemSys_GetCurrentBankNum(FMMemorySystem* the_memsys)
 {
 	if (the_memsys == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		//App_Exit(ERROR_MEMSYS_GET_CURR_ROW_FOLDER_WAS_NULL);	// crash early, crash often
 		return NULL;
 	}
@@ -353,7 +353,7 @@ FMBankObject* MemSys_FindBankByRow(FMMemorySystem* the_memsys, uint8_t the_row)
 
 	if (the_memsys == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		return NULL;
 	}
 	
@@ -396,7 +396,7 @@ void MemSys_PopulateBanks(FMMemorySystem* the_memsys)
 
 	if (the_memsys == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_POPULATE_FILES_FOLDER_WAS_NULL);	// crash early, crash often
 	}
 		
@@ -642,12 +642,16 @@ bool MemSys_BankIsWriteable(FMMemorySystem* the_memsys)
 	return true;
 }
 
-	
+
 // select or unselect 1 file by row id, and change cur_row_ accordingly
 FMBankObject* MemSys_SetBankSelectionByRow(FMMemorySystem* the_memsys, uint16_t the_row, bool do_selection, uint8_t y_offset, bool as_active)
 {
 	FMBankObject*		the_bank;
 	FMBankObject*		the_prev_selected_bank;
+
+	#ifdef LOG_ERR
+	char *errstr = "%s %d: couldn't mark bank '%s' as selected";
+	#endif
 
 	the_bank = MemSys_FindBankByRow(the_memsys, the_row);
 	
@@ -676,7 +680,7 @@ FMBankObject* MemSys_SetBankSelectionByRow(FMMemorySystem* the_memsys, uint16_t 
 				if (Bank_MarkUnSelected(the_prev_selected_bank, y_offset) == false)
 				{
 					// the passed file was null. do anything?
-					LOG_ERR(("%s %d: couldn't mark bank '%s' as selected", __func__ , __LINE__, the_prev_selected_bank->name_));
+					LOG_ERR((errstr, __func__ , __LINE__, the_prev_selected_bank->name_));
 					App_Exit(ERROR_BANK_MARK_UNSELECTED_BANK_WAS_NULL);
 				}
 			}
@@ -687,7 +691,7 @@ FMBankObject* MemSys_SetBankSelectionByRow(FMMemorySystem* the_memsys, uint16_t 
 		if (Bank_MarkSelected(the_bank, y_offset, as_active) == false)
 		{
 			// the passed file was null. do anything?
-			LOG_ERR(("%s %d: couldn't mark bank '%s' as selected", __func__ , __LINE__, the_bank->name_));
+			LOG_ERR((errstr, __func__ , __LINE__, the_bank->name_));
 			App_Exit(ERROR_BANK_MARK_SELECTED_BANK_WAS_NULL);
 		}
 	}
@@ -702,13 +706,13 @@ FMBankObject* MemSys_SetBankSelectionByRow(FMMemorySystem* the_memsys, uint16_t 
 		if (Bank_MarkUnSelected(the_bank, y_offset) == false)
 		{
 			// the passed file was null. do anything?
-			LOG_ERR(("%s %d: couldn't mark bank '%s' as selected", __func__ , __LINE__, the_bank->name_));
+			LOG_ERR((errstr, __func__ , __LINE__, the_bank->name_));
 			App_Exit(ERROR_BANK_MARK_UNSELECTED_BANK_WAS_NULL);
 		}
 	}
 
 	return the_bank;
-}	
+}
 
 
 // ask the user what to fill the current bank with, and fill it with that value

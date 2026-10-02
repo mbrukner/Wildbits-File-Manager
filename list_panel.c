@@ -488,7 +488,7 @@ void Panel_ToggleActiveState(WB2KViewPanel* the_panel)
 // {
 // 	if (the_panel == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_PANEL_WAS_NULL); // crash early, crash often
 // 	}
 // 	
@@ -501,7 +501,7 @@ void Panel_ToggleActiveState(WB2KViewPanel* the_panel)
 // {
 // 	if (the_panel == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_PANEL_WAS_NULL); // crash early, crash often
 // 	}
 // 	
@@ -514,7 +514,7 @@ void Panel_ToggleActiveState(WB2KViewPanel* the_panel)
 // {
 // 	if (the_panel == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_PANEL_WAS_NULL); // crash early, crash often
 // 	}
 // 	
@@ -630,7 +630,7 @@ bool Panel_Refresh(WB2KViewPanel* the_panel)
 
 	if (the_panel == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_PANEL_WAS_NULL); // crash early, crash often
 	}
 
@@ -684,7 +684,7 @@ bool Panel_Refresh(WB2KViewPanel* the_panel)
 // 	
 // 	if (the_panel == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_DEFINE_ME); // crash early, crash often
 // 	}
 // 
@@ -718,7 +718,7 @@ bool Panel_Refresh(WB2KViewPanel* the_panel)
 // {
 // 	if (the_panel == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_PANEL_WAS_NULL); // crash early, crash often
 // 	}
 // 
@@ -746,7 +746,7 @@ bool Panel_Refresh(WB2KViewPanel* the_panel)
 // 	
 // 	if (the_panel == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_DEFINE_ME); // crash early, crash often
 // 	}
 // 
@@ -818,7 +818,7 @@ bool Panel_Refresh(WB2KViewPanel* the_panel)
 // 	
 // 	if (the_panel == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_DEFINE_ME); // crash early, crash often
 // 	}
 // 
@@ -1513,7 +1513,7 @@ bool Panel_SetFileSelectionByRow(WB2KViewPanel* the_panel, uint16_t the_row, boo
 	
 	if (the_panel == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_SET_FILE_SEL_BY_ROW_PANEL_WAS_NULL); // crash early, crash often
 	}
 	
@@ -1585,7 +1585,7 @@ bool Panel_SetFileSelectionByRow(WB2KViewPanel* the_panel, uint16_t the_row, boo
 // 
 // 	if (the_panel == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_PANEL_WAS_NULL); // crash early, crash often
 // 	}
 // 
@@ -1633,7 +1633,7 @@ bool Panel_SetFileSelectionByRow(WB2KViewPanel* the_panel, uint16_t the_row, boo
 // 
 // 	if (the_panel == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_PANEL_WAS_NULL); // crash early, crash often
 // 	}
 // 
@@ -1708,7 +1708,7 @@ bool Panel_SetFileSelectionByRow(WB2KViewPanel* the_panel, uint16_t the_row, boo
 // {
 // 	if (the_panel == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_PANEL_WAS_NULL); // crash early, crash often
 // 	}
 // 

@@ -99,7 +99,7 @@ void Bank_Init(FMBankObject* the_bank, const char* the_name, const char* the_des
 		if ( (the_bank->name_ = General_StrlcpyWithAlloc(the_name, FILE_MAX_FILENAME_SIZE)) == NULL)
 		{
 			//Buffer_NewMessage("could not allocate memory for the bank name");
-			LOG_ERR(("%s %d: could not allocate memory for the bank name", __func__ , __LINE__));
+			LOG_ERR((_allocate_memory_err, __func__ , __LINE__));
 			goto error;
 		}
 		LOG_ALLOC(("%s %d:	__ALLOC__	the_bank->name_	%p	size	%li", __func__ , __LINE__, the_bank->name_, General_Strnlen(the_bank->name_, FILE_MAX_FILENAME_SIZE) + 1));
@@ -107,7 +107,7 @@ void Bank_Init(FMBankObject* the_bank, const char* the_name, const char* the_des
 		if ( (the_bank->description_ = General_StrlcpyWithAlloc(the_description, FILE_MAX_FILENAME_SIZE)) == NULL)
 		{
 			//Buffer_NewMessage("could not allocate memory for the bank description");
-			LOG_ERR(("%s %d: could not allocate memory for the bank description", __func__ , __LINE__));
+			LOG_ERR((_allocate_memory_err, __func__ , __LINE__));
 			goto error;
 		}
 		LOG_ALLOC(("%s %d:	__ALLOC__	the_bank->description_	%p	size	%li", __func__ , __LINE__, the_bank->description_, General_Strnlen(the_bank->description_, FILE_MAX_FILENAME_SIZE) + 1));
@@ -120,7 +120,7 @@ void Bank_Init(FMBankObject* the_bank, const char* the_name, const char* the_des
 		if ( (the_bank->name_ = General_StrlcpyWithAlloc(the_name, FILE_MAX_FILENAME_SIZE)) == NULL)
 		{
 			//Buffer_NewMessage("could not allocate memory for the bank name");
-			LOG_ERR(("%s %d: could not allocate memory for the bank name", __func__ , __LINE__));
+			LOG_ERR((_allocate_memory_err, __func__ , __LINE__));
 			goto error;
 		}
 		LOG_ALLOC(("%s %d:	__ALLOC__	the_bank->name_	%p	size	%li", __func__ , __LINE__, the_bank->name_, General_Strnlen(the_bank->name_, FILE_MAX_FILENAME_SIZE) + 1));
@@ -161,7 +161,7 @@ void Bank_Reset(FMBankObject* the_bank)
 
 	if (the_bank == NULL)
 	{
-		//LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		//LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_BANK_TO_DESTROY_WAS_NULL);	// crash early, crash often
 	}
 
@@ -190,7 +190,7 @@ void Bank_Reset(FMBankObject* the_bank)
 // {
 // 	if (the_bank == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return;
 // 	}
 // 	
@@ -205,7 +205,7 @@ void Bank_UpdatePos(FMBankObject* the_bank, uint8_t x, int8_t display_row, uint1
 {
 	if (the_bank == NULL)
 	{
-		//LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		//LOG_ERR((_null_err, __func__ , __LINE__));
 		return;
 	}
 	
@@ -226,7 +226,7 @@ bool Bank_IsSelected(FMBankObject* the_bank)
 {
 	if (the_bank == NULL)
 	{
-		//LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		//LOG_ERR((_null_err, __func__ , __LINE__));
 		return false;
 	}
 
@@ -359,7 +359,7 @@ bool Bank_MarkSelected(FMBankObject* the_bank, int8_t y_offset, bool as_active)
 
 	if (the_bank == NULL)
 	{
-		//LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		//LOG_ERR((_null_err, __func__ , __LINE__));
 		return false;
 	}
 
@@ -381,7 +381,7 @@ bool Bank_MarkUnSelected(FMBankObject* the_bank, int8_t y_offset)
 
 	if (the_bank == NULL)
 	{
-		//LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		//LOG_ERR((_null_err, __func__ , __LINE__));
 		return false;
 	}
 
@@ -415,7 +415,7 @@ void Bank_Render(FMBankObject* the_bank, bool as_selected, int8_t y_offset, bool
 	
 	if (the_bank == NULL)
 	{
-		//LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		//LOG_ERR((_null_err, __func__ , __LINE__));
 		return;
 	}
 

@@ -202,7 +202,7 @@ error:
 // 
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_DEFINE_ME);	// crash early, crash often
 // 	}
 // 	
@@ -240,7 +240,7 @@ WB2KList* Folder_FindListItemByFileName(WB2KFolderObject* the_folder, char* the_
 
 	if (the_folder == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		return NULL;
 	}
 	
@@ -286,7 +286,7 @@ WB2KList* Folder_FindListItemByFileName(WB2KFolderObject* the_folder, char* the_
 // 
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return NULL;
 // 	}
 // 	
@@ -328,7 +328,7 @@ WB2KList* Folder_FindListItemByFileName(WB2KFolderObject* the_folder, char* the_
 // 
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return NULL;
 // 	}
 // 
@@ -372,7 +372,7 @@ WB2KFolderObject* Folder_NewOrReset(WB2KFolderObject* the_existing_folder,uint8_
 	{
 		if ( (the_folder = (WB2KFolderObject*)calloc(1, sizeof(WB2KFolderObject)) ) == NULL)
 		{
-			LOG_ERR(("%s %d: could not allocate memory to create new folder object", __func__ , __LINE__));
+			LOG_ERR((_allocate_memory_err, __func__ , __LINE__));
 			goto error;
 		}
 		LOG_ALLOC(("%s %d:	__ALLOC__	the_folder	%p	size	%i", __func__ , __LINE__, the_folder, sizeof(WB2KFolderObject)));
@@ -413,7 +413,7 @@ LOG_ALLOC(("%s %d:	this_string_p=%p, &the_folder->file_name_=%p", __func__ , __L
 	// initiate the list, but don't add the first node yet (we don't have any items yet)
 	if ( (the_folder->list_ = (WB2KList**)calloc(1, sizeof(WB2KList*)) ) == NULL)
 	{
-		LOG_ERR(("%s %d: could not allocate memory to create new list", __func__ , __LINE__));
+		LOG_ERR((_allocate_memory_err, __func__ , __LINE__));
 		goto error;
 	}
 	LOG_ALLOC(("%s %d:	__ALLOC__	the_folder->list_	%p	size	%i", __func__ , __LINE__, the_folder->list_, sizeof(WB2KList*)));	
@@ -429,7 +429,7 @@ LOG_ALLOC(("%s %d:	this_string_p=%p, &the_folder->file_name_=%p", __func__ , __L
 	if ( (the_folder->file_path_ = General_StrlcpyWithAlloc(new_path, FILE_MAX_PATHNAME_SIZE)) == NULL)
 	{
 		//Buffer_NewMessage("could not allocate memory for the path name");
-		LOG_ERR(("%s %d: could not allocate memory for the path name", __func__ , __LINE__));
+		LOG_ERR((_allocate_memory_err, __func__ , __LINE__));
 		goto error;
 	}
 	LOG_ALLOC(("%s %d:	__ALLOC__	the_folder->file_path_	%p	size	%i	%s", __func__ , __LINE__, the_folder->file_path_, General_Strnlen(the_folder->file_path_, FILE_MAX_PATHNAME_SIZE) + 1, the_folder->file_path_));
@@ -450,7 +450,7 @@ void Folder_Destroy(WB2KFolderObject** the_folder)
 {
 	if (*the_folder == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_FOLDER_TO_DESTROY_WAS_NULL);	// crash early, crash often
 	}
 
@@ -490,7 +490,7 @@ void Folder_DestroyAllFiles(WB2KFolderObject* the_folder)
 
 	if (the_folder == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_DESTROY_ALL_FOLDER_WAS_NULL);	// crash early, crash often
 	}
 	
@@ -531,7 +531,7 @@ void Folder_SetCurrentRow(WB2KFolderObject* the_folder, int16_t the_row_number)
 {
 	if (the_folder == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_SET_CURR_ROW_FOLDER_WAS_NULL);	// crash early, crash often
 	}
 	
@@ -554,7 +554,7 @@ void Folder_SetCurrentRow(WB2KFolderObject* the_folder, int16_t the_row_number)
 // {
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return NULL;
 // 	}
 // 	
@@ -567,7 +567,7 @@ void Folder_SetCurrentRow(WB2KFolderObject* the_folder, int16_t the_row_number)
 // {
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return NULL;
 // 	}
 // 	
@@ -580,7 +580,7 @@ void Folder_SetCurrentRow(WB2KFolderObject* the_folder, int16_t the_row_number)
 // {
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_DEFINE_ME);	// crash early, crash often
 // 	}
 // 	
@@ -603,7 +603,7 @@ uint16_t Folder_GetCountFiles(WB2KFolderObject* the_folder)
 {
 	if (the_folder == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_DEFINE_ME);	// crash early, crash often
 	}
 	
@@ -616,7 +616,7 @@ int16_t Folder_GetCurrentRow(WB2KFolderObject* the_folder)
 {
 	if (the_folder == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_GET_CURR_ROW_FOLDER_WAS_NULL);	// crash early, crash often
 	}
 	
@@ -661,7 +661,7 @@ uint8_t Folder_GetCurrentFileType(WB2KFolderObject* the_folder)
 // 	
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_DEFINE_ME);	// crash early, crash often
 // 	}
 // 
@@ -685,7 +685,7 @@ uint8_t Folder_GetCurrentFileType(WB2KFolderObject* the_folder)
 // 
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_DEFINE_ME);	// crash early, crash often
 // 	}
 // 
@@ -718,7 +718,7 @@ uint8_t Folder_GetCurrentFileType(WB2KFolderObject* the_folder)
 // 
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return NULL;
 // 	}
 // 
@@ -747,7 +747,7 @@ uint8_t Folder_GetCurrentFileType(WB2KFolderObject* the_folder)
 // 
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return NULL;
 // 	}
 // 
@@ -775,7 +775,7 @@ uint8_t Folder_GetCurrentFileType(WB2KFolderObject* the_folder)
 // 
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_DEFINE_ME);	// crash early, crash often
 // 	}
 // 
@@ -826,7 +826,7 @@ uint8_t Folder_GetCurrentFileType(WB2KFolderObject* the_folder)
 // 
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		return NULL;
 // 	}
 // 
@@ -859,7 +859,7 @@ WB2KFileObject* Folder_FindFileByRow(WB2KFolderObject* the_folder, uint8_t the_r
 
 	if (the_folder == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		return NULL;
 	}
 	
@@ -927,7 +927,7 @@ uint8_t Folder_PopulateFiles(uint8_t the_panel_id, WB2KFolderObject* the_folder)
 	
 	if (the_folder == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_POPULATE_FILES_FOLDER_WAS_NULL);	// crash early, crash often
 	}
 
@@ -1312,7 +1312,7 @@ uint8_t Folder_PopulateFiles(uint8_t the_panel_id, WB2KFolderObject* the_folder)
 	return (the_error_code);
 
 error:
-	LOG_ERR(("%s %d: Could not allocate memory for file object", __func__ , __LINE__));
+	LOG_ERR((_allocate_memory_err, __func__ , __LINE__));
 	the_error_code = ERROR_COULD_NOT_CREATE_NEW_FILE_OBJECT;
 
 	if (dir)	Kernel_CloseDir(dir);
@@ -1353,7 +1353,7 @@ bool Folder_CopyFile(WB2KFolderObject* the_folder, WB2KFileObject* the_file, WB2
 	
 	if (the_folder == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_COPY_FILE_SOURCE_FOLDER_WAS_NULL);	// crash early, crash often
 	}
 
@@ -1504,7 +1504,7 @@ bool Folder_CopyFile(WB2KFolderObject* the_folder, WB2KFileObject* the_file, WB2
 // 
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_DEFINE_ME);	// crash early, crash often
 // 	}
 // 
@@ -1552,7 +1552,7 @@ bool Folder_CopyFile(WB2KFolderObject* the_folder, WB2KFileObject* the_file, WB2
 // 
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_DEFINE_ME);	// crash early, crash often
 // 	}
 // 
@@ -1590,7 +1590,7 @@ bool Folder_CopyFile(WB2KFolderObject* the_folder, WB2KFileObject* the_file, WB2
 // 	
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_DEFINE_ME);	// crash early, crash often
 // 	}
 // 
@@ -1636,7 +1636,7 @@ bool Folder_CopyFile(WB2KFolderObject* the_folder, WB2KFileObject* the_file, WB2
 // 
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_DEFINE_ME);	// crash early, crash often
 // 	}
 // 
@@ -1767,7 +1767,7 @@ bool Folder_AddNewFile(WB2KFolderObject* the_folder, WB2KFileObject* the_file)
 	
 	if (the_folder == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_DEFINE_ME);	// crash early, crash often
 	}
 
@@ -1797,7 +1797,7 @@ bool Folder_AddNewFileAsCopy(WB2KFolderObject* the_folder, WB2KFileObject* the_f
 	
 	if (the_folder == NULL)
 	{
-		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+		LOG_ERR((_null_err, __func__ , __LINE__));
 		App_Exit(ERROR_DEFINE_ME);	// crash early, crash often
 	}
 
@@ -1945,7 +1945,7 @@ bool Folder_AddNewFileAsCopy(WB2KFolderObject* the_folder, WB2KFileObject* the_f
 // 
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_DEFINE_ME);	// crash early, crash often
 // 	}
 // 
@@ -2259,7 +2259,7 @@ bool Folder_AddNewFileAsCopy(WB2KFolderObject* the_folder, WB2KFileObject* the_f
 // 
 // 	if (the_folder == NULL)
 // 	{
-// 		LOG_ERR(("%s %d: passed class object was null", __func__ , __LINE__));
+// 		LOG_ERR((_null_err, __func__ , __LINE__));
 // 		App_Exit(ERROR_DEFINE_ME);	// crash early, crash often
 // 	}
 // 
@@ -2349,7 +2349,7 @@ WB2KFileObject* Folder_SetFileSelectionByRow(WB2KFolderObject* the_folder, uint1
 				if (File_MarkUnSelected(the_prev_selected_file, y_offset) == false)
 				{
 					// the passed file was null. do anything?
-					LOG_ERR(("%s %d: couldn't mark file '%s' as selected", __func__ , __LINE__, the_prev_selected_file->file_name_));
+					LOG_ERR((_mark_selected_err, __func__ , __LINE__, "()"));
 					App_Exit(ERROR_FILE_MARK_UNSELECTED_FILE_WAS_NULL);
 				}
 			}
@@ -2360,7 +2360,7 @@ WB2KFileObject* Folder_SetFileSelectionByRow(WB2KFolderObject* the_folder, uint1
 		if (File_MarkSelected(the_file, y_offset) == false)
 		{
 			// the passed file was null. do anything?
-			LOG_ERR(("%s %d: couldn't mark file '%s' as selected", __func__ , __LINE__, App_GetFilenameFromEM(the_file)));
+			LOG_ERR((_mark_selected_err, __func__ , __LINE__, App_GetFilenameFromEM(the_file)));
 			App_Exit(ERROR_FILE_MARK_SELECTED_FILE_WAS_NULL);
 		}
 	}
@@ -2375,7 +2375,7 @@ WB2KFileObject* Folder_SetFileSelectionByRow(WB2KFolderObject* the_folder, uint1
 		if (File_MarkUnSelected(the_file, y_offset) == false)
 		{
 			// the passed file was null. do anything?
-			LOG_ERR(("%s %d: couldn't mark file '%s' as selected", __func__ , __LINE__, App_GetFilenameFromEM(the_file)));
+			LOG_ERR((_mark_selected_err, __func__ , __LINE__, App_GetFilenameFromEM(the_file)));
 			App_Exit(ERROR_FILE_MARK_UNSELECTED_FILE_WAS_NULL);
 		}
 	}
@@ -2402,7 +2402,7 @@ FILE* Folder_GetTargetHandleForWriting(const char* the_target_file_path)
 	
 		if (the_target_handle == NULL)
 		{
-			LOG_ERR(("%s %d: file '%s' could not be opened for writing", __func__ , __LINE__, the_target_file_path));
+			//LOG_ERR(("%s %d: file '%s' could not be opened for writing", __func__ , __LINE__, the_target_file_path));
 			return NULL;
 		}
 

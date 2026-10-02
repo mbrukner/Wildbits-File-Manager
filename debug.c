@@ -70,7 +70,11 @@
 /*****************************************************************************/
 
 
-
+#ifdef LOG_ERR
+const char *_null_err = "%s %d: passed class object was null";
+const char *_mark_selected_err = "%s %d: couldn't mark file '%s' as selected";
+const char *_allocate_memory_err = "%s %d: could not allocate memory";
+#endif
 
 
 /*****************************************************************************/
@@ -144,7 +148,7 @@
 		{
 			R8(UART_LCR) = UART_DATA_BITS | UART_STOP_BITS | UART_PARITY | UART_NO_BRK_SIG;
 			Serial_SetDLAB();
-			R16(UART_DLL) = UART_BAUD_DIV_57600;
+			R16(UART_DLL) = UART_BAUD_DIV_115200;
 			Serial_ClearDLAB();
 		}
 		
@@ -361,7 +365,11 @@ bool General_LogInitialize(void)
 			return false;
 		}
 		
-		write(global_log_file_handle, "started log file", 16);
+		#if defined USE_SERIAL_LOGGING
+			Serial_SendData("started log file", 16);
+		#else
+			write(global_log_file_handle, "started log file", 16);
+		#endif
 	#endif
 	
 	return true;

@@ -91,6 +91,12 @@
 /*                             Global Variables                              */
 /*****************************************************************************/
 
+#ifdef LOG_ERR
+extern const char *_null_err;
+extern const char *_mark_selected_err;
+extern const char *_allocate_memory_err;
+#endif
+
 
 /*****************************************************************************/
 /*                       Public Function Prototypes                          */
