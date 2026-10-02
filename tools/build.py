@@ -95,6 +95,8 @@ def main():
             archive.writestr(f'flash/fm.{i:02d}', firmware[i*8192:(i+1)*8192].ljust(8192, b'\0'))
         for doc in ['README.md', 'documentation/installing.md', 'documentation/using.md', 'LICENSE']:
             archive.write(ROOT / doc, Path(doc).name)
+        cc65_license = 'config_cc65/include/___READ_ME_CC65/LICENSE'
+        archive.write(ROOT / cc65_license, cc65_license)
     print(f'Built {build / "wildbits-fm.pgz"}: {len(pgz)} bytes')
 
 

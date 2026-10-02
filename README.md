@@ -38,6 +38,8 @@ See [installation](documentation/installing.md), [usage](documentation/using.md)
 
 ## History and credit
 
-This fork preserves Micah Bly's original file manager and Martin Brukner's local debugging changes. The original MIT license and author credits remain intact. The GitHub fork relationship and `upstream` remote retain the source lineage; `local/debug-checkpoint` preserves the local changes before this review.
+Wildbits File Manager is derived from [Micah Bly (WartyMN)'s original file manager](https://github.com/WartyMN/F256-FileManager). Micah's source author credits, copyright notice in the application's About display, and the original [GNU GPL version 3 license](LICENSE) are retained. This is a renamed and modified fork, maintained by [mbrukner](https://github.com/mbrukner). The bundled cc65 material retains its [separate license](config_cc65/include/___READ_ME_CC65/LICENSE).
+
+The original Git history and GitHub fork relationship are preserved. The `upstream` remote points to Micah's repository; `local/debug-checkpoint` preserves Martin Brukner's local debugging changes before the Wildbits review.
 
 Development lives at [mbrukner/Wildbits-File-Manager](https://github.com/mbrukner/Wildbits-File-Manager). The reviewed C/assembly baseline is the reference for the subsequent assembler conversion.
