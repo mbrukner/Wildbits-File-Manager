@@ -46,7 +46,7 @@
 // load strings into memory and set up string pointers
 void Startup_LoadString(void);
 
-// clear screen and show app (foenix) logo, and machine logo if running from flash
+// Show the animated Wildbits title screen; any key skips it.
 void Startup_ShowLogo(void);
 
 // enable the random number generator, and seed it
