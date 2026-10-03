@@ -1,6 +1,7 @@
 """Execute linked application code, including cc65-generated code and RAM overlays.
 
-The fixture begins after directory I/O. Disk/IRQ hardware is not emulated here.
+Directory fixtures inject entries at the kernel API boundary or start after I/O.
+Disk/IRQ hardware is not emulated here.
 Target structure sizes/offsets come from cc65 compiling the application's headers.
 """
 import os
@@ -13,6 +14,7 @@ from py65.devices.mpu65c02 import MPU
 
 ROOT = Path(__file__).resolve().parents[1]
 FIELDS = {
+    'struct dirent': ['d_name', 'd_blocks', 'd_type'],
     'WB2KList': ['next_item_', 'prev_item_', 'payload_'],
     'WB2KFileObject': ['size_', 'panel_id_', 'id_', 'file_type_', 'selected_', 'row_', 'display_row_'],
     'WB2KFolderObject': ['list_', 'file_name_', 'file_path_', 'file_count_', 'cur_row_'],
@@ -33,6 +35,7 @@ class BankedMachine:
         self.io_control = 0
         self.luts = [list(range(8)) for _ in range(4)]
         self.labels = labels
+        self.hooks = {}
         offset = 1
         assert pgz[0] == ord('Z')
         while offset < len(pgz):
@@ -98,7 +101,12 @@ class BankedMachine:
                 return
             if self[self.cpu.pc] == 0:
                 raise AssertionError(f'{name} reached BRK at ${self.cpu.pc:04X}')
-            self.cpu.step()
+            if self.cpu.pc in self.hooks:
+                result = self.hooks[self.cpu.pc]()
+                self.cpu.a, self.cpu.x = result & 255, result >> 8
+                self.cpu.pc = (self.cpu.stPopWord() + 1) & 65535
+            else:
+                self.cpu.step()
         raise AssertionError(f'{name} failed to return; PC=${self.cpu.pc:04X}')
 
 
@@ -118,7 +126,7 @@ class TargetTests(unittest.TestCase):
             expressions[struct] = f'sizeof({struct})'
             for field in fields:
                 expressions[struct + '.' + field] = f'offsetof({struct}, {field})'
-        source = '#include "list_panel.h"\n#include <stddef.h>\nconst unsigned int layout[] = {\n'
+        source = '#include "list_panel.h"\n#include "dirent.h"\n#include <stddef.h>\nconst unsigned int layout[] = {\n'
         source += ',\n'.join(expressions.values()) + '\n};\n'
         (work / 'layout.c').write_text(source)
         subprocess.run([tool('cc65'), '--cpu', '65C02', '-t', 'none', '-I', str(ROOT), '-I', str(ROOT / 'config_cc65'), str(work / 'layout.c'), '-o', str(work / 'layout.s')], check=True)
@@ -207,6 +215,68 @@ class TargetTests(unittest.TestCase):
                     self.assert_list(machine, head, nodes, objects, names, get)
                     self.assertEqual(machine.control, lut)
                     self.assertEqual(machine.luts[lut][5:7], [9, 6])
+
+    def test_two_directory_panes_share_real_heap(self):
+        machine = BankedMachine(self.pgz, self.labels)
+        machine.luts[0][5] = 11
+        machine.call('_Startup_LoadString')
+        machine.call('_Buffer_Initialize')
+        # Match the runtime's heap initialization, retaining its full stack reserve.
+        machine.word(self.labels['__heapend'], self.labels['__STACKSTART__'])
+        machine.luts[0][5] = 9
+        names = [f'file-{41-i:03d}' for i in range(41)]
+        cursor = 0
+        def open_dir():
+            nonlocal cursor
+            cursor = 0
+            return 0xE100
+        def read_dir():
+            nonlocal cursor
+            if cursor > len(names):
+                return 0
+            address = 0xE200
+            for offset in range(self.layout['struct dirent']):
+                machine[address + offset] = 0
+            # Include a volume label, as the kernel does for an SD directory.
+            name = '0:' if cursor == 0 else names[cursor-1]
+            for i, value in enumerate(name.encode() + b'\0'):
+                machine[address + self.layout['struct dirent.d_name'] + i] = value
+            machine[address + self.layout['struct dirent.d_type']] = 2 if cursor == 0 else 0
+            machine.word(address + self.layout['struct dirent.d_blocks'], 1)
+            cursor += 1
+            return address
+        machine.hooks[self.labels['_Kernel_OpenDir']] = open_dir
+        machine.hooks[self.labels['_Kernel_ReadDir']] = read_dir
+        machine.hooks[self.labels['_Kernel_CloseDir']] = lambda: 0
+        panels = []
+        for panel_id in range(2):
+            for i, value in enumerate(b'0:\0'):
+                machine[0xE100+i] = value
+            machine.luts[0][5] = 9
+            machine.call('_Folder_NewOrReset', 0xE100, b'\0\0\0')
+            folder = machine.cpu.a + 256 * machine.cpu.x
+            self.assertNotEqual(folder, 0)
+            machine.call('_calloc', self.layout['WB2KViewPanel'], b'\1\0')
+            panel = machine.cpu.a + 256 * machine.cpu.x
+            self.assertNotEqual(panel, 0)
+            machine.word(panel + self.layout['WB2KViewPanel.root_folder_'], folder)
+            machine.word(panel + self.layout['WB2KViewPanel.sort_compare_function_'], self.labels['_File_CompareName'])
+            for field, value in [('id_', panel_id), ('x_', 1 if panel_id == 0 else 46),
+                                 ('y_', 8), ('width_', 33), ('height_', 41),
+                                 ('active_', panel_id == 0), ('for_disk_', 1)]:
+                machine[panel + self.layout['WB2KViewPanel.' + field]] = int(value)
+            panels.append((folder, panel))
+            machine.call('_Panel_Refresh', panel)
+            self.assertEqual(machine.word(folder + self.layout['WB2KFolderObject.file_count_']), 41,
+                             f'Pane {panel_id} truncated the directory')
+        # Refresh either pane without destroying or corrupting the other one.
+        for folder, panel in panels:
+            machine.call('_Panel_Refresh', panel)
+            self.assertEqual(machine.word(folder + self.layout['WB2KFolderObject.file_count_']), 41)
+        for x in (1, 46):
+            for row in range(41):
+                offset = (8 + row) * 80 + x
+                self.assertEqual(machine.io[2][offset:offset+8], f'file-{row+1:03d}'.encode())
 
     def test_41_file_sort_render_and_selection(self):
         names = [f'file-{41-i:03d}' for i in range(41)]

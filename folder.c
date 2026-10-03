@@ -55,8 +55,11 @@
 /*                          File-scoped Variables                            */
 /*****************************************************************************/
 
-static char			folder_temp_filename_buffer[FILE_MAX_FILENAME_SIZE];
+// This scratch buffer is only used while the disk overlay is mapped.
+#pragma data-name (push, "OVERLAY_DISKSYS")
+static char            folder_temp_filename_buffer[FILE_MAX_FILENAME_SIZE] = {0};
 static char*		folder_temp_filename = folder_temp_filename_buffer;
+#pragma data-name (pop)
 
 
 /*****************************************************************************/

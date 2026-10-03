@@ -49,12 +49,13 @@
 /*                           File-scope Variables                            */
 /*****************************************************************************/
 
+// Explicit initializers place scratch buffers in this overlay, not resident BSS.
 #pragma data-name (push, "OVERLAY_DISKSYS")
 
-static char			file_compare_filename_buffer[FILE_MAX_FILENAME_SIZE];	// for stashing a 2nd filename from EM
+static char			file_compare_filename_buffer[FILE_MAX_FILENAME_SIZE] = {0};	// for stashing a 2nd filename from EM
 static char*		file_compare_filename = file_compare_filename_buffer;
 
-static uint8_t		temp_file_extension_buffer[FILE_MAX_EXTENSION_SIZE];	// 8 probably larger than needed, but...
+static uint8_t		temp_file_extension_buffer[FILE_MAX_EXTENSION_SIZE] = {0};	// 8 probably larger than needed, but...
 
 #pragma data-name (pop)
 

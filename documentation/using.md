@@ -34,7 +34,7 @@ Copying a file to an occupied name chooses a numbered suffix. Files are copied i
 
 ## Current limits
 
-- At most 255 directory entries per pane, further limited by available heap. Longer listings produce a warning.
+- At most 255 directory entries per pane, further limited by the heap shared by both panes. The second directory can reach this limit sooner; a low-memory warning means the listing is incomplete. Use the release build for normal operation, as debug logging leaves substantially less heap.
 - Filenames are limited to 31 characters; longer names are skipped with a warning, rather than truncated for file operations.
 - Paths must fit a 255-byte buffer including their terminator.
 - File viewing is limited by the scratch region before filename storage: 224 pages (57,344 bytes). The loader also has an absolute 255-page limit. The final displayed page can include zero padding. Loading a file into a selected RAM bank is limited to 8 KiB; a failed oversized load can leave that bank partially modified.

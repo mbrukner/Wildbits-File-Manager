@@ -48,11 +48,12 @@
 /*                          File-scoped Variables                            */
 /*****************************************************************************/
 
+// Explicit initializers place scratch buffers in this overlay, not resident BSS.
 #pragma data-name ("OVERLAY_MEMSYS")
 
-static uint8_t				memsys_temp_kupname_buffer_storage[MEMSYS_KUPNAME_TEMP_BUFFER_LEN];
+static uint8_t				memsys_temp_kupname_buffer_storage[MEMSYS_KUPNAME_TEMP_BUFFER_LEN] = {0};
 static uint8_t*				memsys_temp_kupname_buffer = memsys_temp_kupname_buffer_storage;
-static uint8_t memsys_page_buffer[256];
+static uint8_t memsys_page_buffer[256] = {0};
 
 
 /*****************************************************************************/
