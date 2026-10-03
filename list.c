@@ -80,7 +80,13 @@ WB2KList* List_MergeSortedList(WB2KList* list1, WB2KList* list2, bool (* compare
         }
         tail = &(*tail)->next_item_;
     }
-    *tail = list1 != NULL ? list1 : list2;
+    /* cc65 2.19 miscompiles the indirect assignment of a pointer ternary here:
+       the non-NULL arm reads the wrong software-stack slot. Keep explicit arms. */
+    if (list1 != NULL) {
+        *tail = list1;
+    } else {
+        *tail = list2;
+    }
     return result;
 }
 

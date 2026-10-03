@@ -33,3 +33,9 @@ Both cc65 release and UART debug configurations must build. No board, SD card, I
 ## Assembler conversion
 
 The reviewed baseline should remain available for comparison. Conversion must retain the four-drive mapping, kernel event handling, memory protection and existing operations. Establish code-size and cycle measurements before claiming improvements; disk latency cannot be inferred from CPU-only tests. Preserve the baseline and regression cases while moving implementation to native assembly on the fork.
+
+## October 3: startup hang after directory scan
+
+Hardware testing reported a hang after “41 files found”, with both PGZ and flash launches. The iterative merge introduced during the review used `*tail = list1 != NULL ? list1 : list2`. The pinned cc65 compiler emitted a load from software-stack offset 11 for the non-NULL arm, although `list1` was at offset 9. This linked an unrelated pointer into the file list, producing a cycle or memory corruption. The host C tests could not detect this target-code-generation defect.
+
+Reproducing the compiled sort in banked-memory emulation failed even for a two-entry reverse-ordered directory. Replacing the conditional assignment with explicit `if`/`else` arms fixes the generated load. The new `tests/test_target.py` builds and executes the actual linked release code, using structure offsets compiled from the application headers. It checks empty, singleton, ascending, descending, duplicate and shuffled directories, both filename banks and multiple active LUTs. A 41-file case exercises sorting, rendering every filename and selecting the first entry. The corrected PGZ and flash package still need confirmation on the board.

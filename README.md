@@ -32,7 +32,7 @@ python3 -m venv .venv
 CC65_HOME=/path/to/cc65 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-Tests need a host C compiler with AddressSanitizer and UndefinedBehaviorSanitizer. They exercise portable application functions and execute the native text/MMU routines in a 65C02 emulator with modeled I/O. They do not emulate the complete machine or its disk devices. Hardware validation is still required.
+Tests need a host C compiler with AddressSanitizer and UndefinedBehaviorSanitizer. They exercise portable application functions, the native text/MMU routines, and the linked release build's directory sorting, rendering and selection in a 65C02 emulator with modeled banked RAM and I/O. Target structure layouts are obtained from cc65. These tests do not emulate the complete machine or its disk devices. Hardware validation is still required.
 
 See [installation](documentation/installing.md), [usage](documentation/using.md), and the [review record](documentation/review.md).
 
