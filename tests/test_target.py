@@ -1,7 +1,7 @@
 """Execute linked application code, including cc65-generated code and RAM overlays.
 
-Directory fixtures inject entries at the kernel API boundary or start after I/O.
-Disk/IRQ hardware is not emulated here.
+Directory fixtures model the MicroKernel vector ABI, including its user-LUT RAM
+alias. Disk/IRQ hardware is not emulated here. Other fixtures start after I/O.
 Target structure sizes/offsets come from the assembly ABI in asm/layout.inc.
 """
 from pathlib import Path
@@ -218,6 +218,124 @@ class TargetTests(unittest.TestCase):
                     self.assertEqual(machine.control, lut)
                     self.assertEqual(machine.luts[lut][5:7], [9, 6])
 
+    def install_directory_kernel(self, machine, names):
+        # Model the real vector boundary, not _Kernel_OpenDir/ReadDir/CloseDir.
+        # The kernel writes its physical RAM, then NextEvent/ReadData/ReadExt
+        # access that RAM through $C000 in the *user's* active LUT.
+        alias_bank = machine.luts[machine.control & 3][6]
+        args = self.labels['_args']
+        cursor, drive = 0, 0
+        event, name = bytes(7), b''
+        pending = False
+        empty_poll = False
+
+        def physical(offset, data):
+            start = alias_bank * 8192 + offset
+            machine.ram[start:start+len(data)] = data
+
+        def enqueue(kind, filename=b''):
+            nonlocal event, name, pending, empty_poll
+            name = filename
+            event = bytes([kind, 1, 0, 0, 0, len(name), 0])
+            physical(0x300, event)
+            physical(0x400, name)
+            physical(0x600, b'\1\0\0')
+            pending, empty_poll = True, True
+
+        def kernel_call(vector):
+            nonlocal cursor, drive, pending, empty_poll
+            self.assertEqual(machine.luts[machine.control & 3][6], alias_bank,
+                             f'${vector:04X} cannot access the kernel alias')
+            old_io = machine.io_control
+            machine.io_control = 4
+            machine.cpu.p &= ~machine.cpu.CARRY
+            result = 0
+            if vector == 0xFF78:
+                drive = machine[args+3]
+                self.assertIn(drive, names)
+                cursor = 0
+                # Directory.Open imports the path via the same alias, too.
+                source, length = machine.word(args+11), machine[args+13]
+                for i in range(length):
+                    machine[0xC800+i] = machine[source+i]
+                self.assertEqual(bytes(machine.ram[alias_bank*8192+0x800:alias_bank*8192+0x800+length]),
+                                 bytes(machine[source+i] for i in range(length)))
+                enqueue(0x3C)
+                result = 1
+            elif vector == 0xFF7C:
+                if cursor == 0:
+                    enqueue(0x3E, f'{drive}:'.encode())
+                elif cursor <= len(names[drive]):
+                    enqueue(0x40, names[drive][cursor-1].encode())
+                else:
+                    enqueue(0x44)
+                cursor += 1
+            elif vector == 0xFF80:
+                enqueue(0x46)
+            elif vector == 0xFF00:
+                # Exercise polling while the asynchronous request is pending.
+                if empty_poll or not pending:
+                    machine.cpu.p |= machine.cpu.CARRY
+                    empty_poll = False
+                else:
+                    destination = machine.word(args)
+                    for i in range(7):
+                        machine[destination+i] = machine[0xC300+i]
+                    pending = False
+            elif vector in (0xFF04, 0xFF08):
+                source = 0xC400 if vector == 0xFF04 else 0xC600
+                destination, length = machine.word(args+11), machine[args+13]
+                for i in range(length):
+                    machine[destination+i] = machine[source+i]
+            machine.io_control = old_io
+            return result
+
+        for vector in (0xFF78, 0xFF7C, 0xFF80, 0xFF00, 0xFF04, 0xFF08, 0xFF0C):
+            machine[vector] = 0x60   # vector hook stands in for the kernel ROM
+            machine.hooks[vector] = lambda vector=vector: kernel_call(vector)
+
+    def test_kernel_bridge_preserves_registers_flags_and_mapping(self):
+        vectors = sorted(name for name in self.labels if name.startswith('_KernelCall_'))
+        self.assertTrue(vectors)
+        for lut in range(4):
+            machine = BankedMachine(self.pgz, self.labels, lut)
+            # Capture a non-default alias, with an unrelated LUT selected for edit.
+            machine.luts[lut][6] = 31
+            machine.control = 0xA0 | lut
+            machine.io_control = 2
+            machine.call('_KernelBridge_Init')
+            for pane in range(2):
+                machine.call('_Directory_Select', pane)
+                for name in vectors:
+                    vector = int(name[-4:], 16)
+                    machine[vector] = 0x60
+                    for incoming, outgoing in [(0xC9, 0x06), (0x06, 0xC9)]:
+                        for io in (0, 4, 7):
+                            with self.subTest(lut=lut, pane=pane, vector=name, io=io, flags=incoming):
+                                machine.io_control = io
+                                mappings = [row[:] for row in machine.luts]
+                                def kernel():
+                                    self.assertEqual(machine.luts[lut][6], 31)
+                                    self.assertEqual(machine.control, 0xA0 | lut)
+                                    self.assertEqual((machine.cpu.a, machine.cpu.x, machine.cpu.y), (0x12, 0x34, 0x56))
+                                    self.assertEqual(machine.cpu.p & 0xCF, incoming)
+                                    machine.cpu.y = 0xAB
+                                    machine.cpu.p = outgoing
+                                    # Verify restoration even if a vector changes the I/O page.
+                                    machine.io_control = 3
+                                    return 0xCDEF
+                                machine.hooks[vector] = kernel
+                                machine.cpu.y, machine.cpu.p = 0x56, incoming
+                                machine.call(name, 0x3412)
+                                self.assertEqual((machine.cpu.a, machine.cpu.x, machine.cpu.y), (0xEF, 0xCD, 0xAB))
+                                self.assertEqual(machine.cpu.p & 0xCF, outgoing)
+                                self.assertEqual(machine.luts, mappings)
+                                self.assertEqual(machine.control, 0xA0 | lut)
+                                self.assertEqual(machine.io_control, io)
+            machine.call('_KernelBridge_Restore')
+            self.assertEqual(machine.luts[lut][6], 31)
+            self.assertEqual(machine.io_control, 2)
+
     def banked_directory_pair(self, count):
         machine = BankedMachine(self.pgz, self.labels)
         machine.luts[0][5] = 11
@@ -227,37 +345,15 @@ class TargetTests(unittest.TestCase):
         machine.word(self.labels['__heapend'], self.labels['__STACKSTART__'])
         machine.luts[0][5] = 9
         names = {pane: [f'{pane}-{count-i:03d}' for i in range(count)] for pane in range(2)}
-        selected_pane = 0
-        cursor = 0
-        def open_dir():
-            nonlocal cursor, selected_pane
-            cursor = 0
-            selected_pane = machine.luts[machine.control & 3][6] - 29
-            return 0xE100
-        def read_dir():
-            nonlocal cursor
-            if cursor > len(names[selected_pane]):
-                return 0
-            address = 0xE200
-            for offset in range(self.layout['struct dirent']):
-                machine[address + offset] = 0
-            # Include a volume label, as the kernel does for an SD directory.
-            name = '0:' if cursor == 0 else names[selected_pane][cursor-1]
-            for i, value in enumerate(name.encode() + b'\0'):
-                machine[address + self.layout['struct dirent.d_name'] + i] = value
-            machine[address + self.layout['struct dirent.d_type']] = 2 if cursor == 0 else 0
-            machine.word(address + self.layout['struct dirent.d_blocks'], 1)
-            cursor += 1
-            return address
-        machine.hooks[self.labels['_Kernel_OpenDir']] = open_dir
-        machine.hooks[self.labels['_Kernel_ReadDir']] = read_dir
-        machine.hooks[self.labels['_Kernel_CloseDir']] = lambda: 0
+        machine.call('_KernelBridge_Init')
+        machine.call('_kernel_init')
+        self.install_directory_kernel(machine, names)
         panels = []
         for panel_id in range(2):
-            for i, value in enumerate(b'0:\0'):
+            for i, value in enumerate(f'{panel_id}:\0'.encode()):
                 machine[0xE100+i] = value
             machine.luts[0][5] = 9
-            machine.call('_Folder_NewOrReset', 0xE100, b'\0\0\0')
+            machine.call('_Folder_NewOrReset', 0xE100, bytes([panel_id, 0, 0]))
             folder = machine.cpu.a + 256 * machine.cpu.x
             self.assertNotEqual(folder, 0)
             machine.call('_calloc', self.layout['WB2KViewPanel'], b'\1\0')
@@ -317,6 +413,8 @@ class TargetTests(unittest.TestCase):
         start = self.labels['__BSS_RUN__']
         for address in range(start, start + self.labels['__BSS_SIZE__']):
             machine[address] = 0xA5
+        machine.cpu.sp = 0xFD
+        machine.word(0x1FE, 0x6FF)
         machine.cpu.pc = 0x799
         for _ in range(100_000):
             if machine.cpu.pc == self.labels['_main']:
@@ -327,6 +425,19 @@ class TargetTests(unittest.TestCase):
         self.assertEqual(machine.word(self.labels['sp']), 0x9FFF)
         self.assertEqual(machine.word(self.labels['__heapend']), self.labels['__STACKSTART__'])
         self.assertEqual(machine.word(self.labels['__heapptr']), start + self.labels['__BSS_SIZE__'])
+        # Simulate main returning after it has selected a directory bank.
+        machine.luts[0][6] = 30
+        machine.io_control = 4
+        machine.cpu.pc = machine.cpu.stPopWord() + 1
+        for _ in range(10_000):
+            if machine.cpu.pc == 0x700:
+                break
+            machine.cpu.step()
+        else:
+            self.fail('Startup did not return to its loader')
+        self.assertEqual(machine.cpu.sp, 0xFF)
+        self.assertEqual(machine.luts[0][6], 6)
+        self.assertEqual(machine.io_control, 0)
 
     def test_native_filename_slots_and_mmu_restoration(self):
         for lut in range(4):

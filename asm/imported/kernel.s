@@ -488,7 +488,7 @@ L04AD:	sta     (ptr1),y
 ;
 ; ret = CALL(File.Open);
 ;
-	jsr     $FF5C
+	jsr     _KernelCall_FF5C
 	stz     _error
 	ror     _error
 	ldx     #$00
@@ -511,7 +511,7 @@ L04AB:	stz     _event
 ;
 ; asm("jsr %w", VECTOR(NextEvent));
 ;
-	jsr     $FF00
+	jsr     _KernelCall_FF00
 ;
 ; Keyboard_DeferBackgroundEvent();
 ;
@@ -590,7 +590,7 @@ L01F8:	ldy     #$00
 ;
 ; CALL(File.Close);
 ;
-	jsr     $FF68
+	jsr     _KernelCall_FF68
 	stz     _error
 	ror     _error
 ;
@@ -610,7 +610,7 @@ L04AE:	txa
 ;
 ; asm("jsr %w", VECTOR(NextEvent));
 ;
-	jsr     $FF00
+	jsr     _KernelCall_FF00
 ;
 ; Keyboard_DeferBackgroundEvent();
 ;
@@ -722,7 +722,7 @@ L0232:	ldy     #$01
 ;
 ; stream = CALL(Directory.Open);
 ;
-	jsr     $FF78
+	jsr     _KernelCall_FF78
 	stz     _error
 	ror     _error
 	ldy     #$00
@@ -747,7 +747,7 @@ L04B1:	txa
 ;
 ; asm("jsr %w", VECTOR(NextEvent));
 ;
-	jsr     $FF00
+	jsr     _KernelCall_FF00
 ;
 ; Keyboard_DeferBackgroundEvent();
 ;
@@ -842,7 +842,7 @@ L026B:	jsr     ldax0sp
 ;
 ; CALL(Directory.Read);
 ;
-	jsr     $FF7C
+	jsr     _KernelCall_FF7C
 	stz     _error
 	ror     _error
 ;
@@ -866,7 +866,7 @@ L0281:	jsr     decsp2
 ;
 ; asm("jsr %w", VECTOR(NextEvent));
 ;
-	jsr     $FF00
+	jsr     _KernelCall_FF00
 ;
 ; Keyboard_DeferBackgroundEvent();
 ;
@@ -934,7 +934,7 @@ L04B3:	stz     sreg
 ;
 ; CALL(ReadExt);
 ;
-	jsr     $FF08
+	jsr     _KernelCall_FF08
 	stz     _error
 	ror     _error
 ;
@@ -994,7 +994,7 @@ L02B9:	ldy     #$03
 ;
 ; CALL(Directory.Read);
 ;
-	jsr     $FF7C
+	jsr     _KernelCall_FF7C
 	stz     _error
 	ror     _error
 ;
@@ -1060,7 +1060,7 @@ L02D5:	lda     (sp)
 ;
 ; CALL(ReadData);
 ;
-	jsr     $FF04
+	jsr     _KernelCall_FF04
 	stz     _error
 	ror     _error
 ;
@@ -1128,7 +1128,7 @@ L02F2:	jsr     ldax0sp
 ;
 ; CALL(Directory.Close);
 ;
-	jsr     $FF80
+	jsr     _KernelCall_FF80
 	stz     _error
 	ror     _error
 ;
@@ -1148,7 +1148,7 @@ L04B6:	txa
 ;
 ; CALL(NextEvent);
 ;
-	jsr     $FF00
+	jsr     _KernelCall_FF00
 	stz     _error
 	ror     _error
 ;
@@ -1160,7 +1160,7 @@ L04B6:	txa
 ;
 	lda     _error
 	beq     L0318
-	jsr     $FF0C
+	jsr     _KernelCall_FF0C
 	bra     L0309
 ;
 ; if (event.type == EVENT(directory.CLOSED)) {
@@ -1581,7 +1581,7 @@ L0071:	stz     $01
 ;
 ; CALL(NextEvent);
 ;
-L009B:	jsr     $FF00
+L009B:	jsr     _KernelCall_FF00
 	stz     _error
 	ror     _error
 ;
@@ -1596,7 +1596,7 @@ L009B:	jsr     $FF00
 ;
 ; asm("jsr %w", VECTOR(Yield));
 ;
-	jsr     $FF0C
+	jsr     _KernelCall_FF0C
 ;
 ; continue;
 ;
@@ -1654,7 +1654,7 @@ L04C5:	lda     _event+5
 ;
 ; CALL(NextEvent);
 ;
-	jsr     $FF00
+	jsr     _KernelCall_FF00
 	stz     _error
 	ror     _error
 ;
@@ -1669,7 +1669,7 @@ L04C5:	lda     _event+5
 ;
 ; asm("jsr %w", VECTOR(Yield));
 ;
-	jsr     $FF0C
+	jsr     _KernelCall_FF0C
 ;
 ; return false;
 ;
@@ -1875,7 +1875,7 @@ L0148:	ldy     #$04
 ;
 ; CALL(File.Read);
 ;
-	jsr     $FF60
+	jsr     _KernelCall_FF60
 	stz     _error
 	ror     _error
 ;
@@ -1898,7 +1898,7 @@ L04CA:	txa
 ;
 ; asm("jsr %w", VECTOR(NextEvent));
 ;
-	jsr     $FF00
+	jsr     _KernelCall_FF00
 ;
 ; Keyboard_DeferBackgroundEvent();
 ;
@@ -1934,7 +1934,7 @@ L0170:	ldy     #$03
 ;
 ; asm("jsr %w", VECTOR(ReadData));
 ;
-	jsr     $FF04
+	jsr     _KernelCall_FF04
 ;
 ; if (!event.file.data.delivered) {
 ;
@@ -2004,7 +2004,7 @@ L0186:	dex
 ;
 ; CALL(File.Write);
 ;
-	jsr     $FF64
+	jsr     _KernelCall_FF64
 	stz     _error
 	ror     _error
 ;
@@ -2027,7 +2027,7 @@ L04CC:	txa
 ;
 ; asm("jsr %w", VECTOR(NextEvent));
 ;
-	jsr     $FF00
+	jsr     _KernelCall_FF00
 ;
 ; Keyboard_DeferBackgroundEvent();
 ;
@@ -2125,7 +2125,7 @@ L0330:	ldy     #$01
 ;
 ; stream = CALL(File.Delete);
 ;
-	jsr     $FF70
+	jsr     _KernelCall_FF70
 	stz     _error
 	ror     _error
 	ldy     #$00
@@ -2150,7 +2150,7 @@ L04CF:	txa
 ;
 ; asm("jsr %w", VECTOR(NextEvent));
 ;
-	jsr     $FF00
+	jsr     _KernelCall_FF00
 ;
 ; Keyboard_DeferBackgroundEvent();
 ;
@@ -2252,7 +2252,7 @@ L0366:	ldy     #$01
 ;
 ; stream = CALL(Directory.RmDir);
 ;
-	jsr     $FF88
+	jsr     _KernelCall_FF88
 	stz     _error
 	ror     _error
 	ldy     #$00
@@ -2277,7 +2277,7 @@ L04D2:	txa
 ;
 ; asm("jsr %w", VECTOR(NextEvent));
 ;
-	jsr     $FF00
+	jsr     _KernelCall_FF00
 ;
 ; Keyboard_DeferBackgroundEvent();
 ;
@@ -2425,7 +2425,7 @@ L03A5:	ldy     #$02
 ;
 ; stream = CALL(File.Rename);
 ;
-	jsr     $FF6C
+	jsr     _KernelCall_FF6C
 	stz     _error
 	ror     _error
 	ldy     #$01
@@ -2450,7 +2450,7 @@ L04D7:	txa
 ;
 ; asm("jsr %w", VECTOR(NextEvent));
 ;
-	jsr     $FF00
+	jsr     _KernelCall_FF00
 ;
 ; Keyboard_DeferBackgroundEvent();
 ;
@@ -2543,7 +2543,7 @@ L03DC:	ldy     #$01
 ;
 ; stream = CALL(FileSystem.MkFS);
 ;
-	jsr     $FF44
+	jsr     _KernelCall_FF44
 	stz     _error
 	ror     _error
 	ldy     #$00
@@ -2568,7 +2568,7 @@ L04DA:	txa
 ;
 ; asm("jsr %w", VECTOR(NextEvent));
 ;
-	jsr     $FF00
+	jsr     _KernelCall_FF00
 ;
 ; Keyboard_DeferBackgroundEvent();
 ;
@@ -2653,7 +2653,7 @@ L04DB:	txa
 ;
 ; stream = CALL(Directory.MkDir);
 ;
-	jsr     $FF84
+	jsr     _KernelCall_FF84
 	stz     _error
 	ror     _error
 	ldy     #$00
@@ -2678,7 +2678,7 @@ L04DC:	txa
 ;
 ; asm("jsr %w", VECTOR(NextEvent));
 ;
-	jsr     $FF00
+	jsr     _KernelCall_FF00
 ;
 ; Keyboard_DeferBackgroundEvent();
 ;
@@ -2746,7 +2746,7 @@ L04DD:	lda     #$01
 ;
 ; stream = CALL(RunNamed);
 ;
-	jsr     $FF18
+	jsr     _KernelCall_FF18
 	stz     _error
 	ror     _error
 	sta     (sp)
@@ -2943,7 +2943,7 @@ L0450:	ldx     #$02
 ;
 ; stream = CALL(RunNamed);
 ;
-L0479:	jsr     $FF18
+L0479:	jsr     _KernelCall_FF18
 	stz     _error
 	ror     _error
 	ldy     #$01

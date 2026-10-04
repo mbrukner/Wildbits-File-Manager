@@ -37,7 +37,7 @@ python3 -m venv .venv
 CC65_HOME=/path/to/cc65 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-Tests execute the linked assembly build in a 65C02 emulator with modeled banked RAM and I/O, including two full 255-entry panes, scrolling, refreshes, filename transfers and memory protection. The preserved C reference cases additionally need a host C compiler with AddressSanitizer and UndefinedBehaviorSanitizer; this compiler is not used to build the application. Structure offsets are shared with the assembler through `asm/layout.inc`. The complete machine and its disk devices are not emulated, so hardware validation is still required.
+Tests execute the linked assembly build in a 65C02 emulator with modeled banked RAM and I/O, including MicroKernel event/buffer aliasing, two full 255-entry panes, scrolling, refreshes, filename transfers and memory protection. The preserved C reference cases additionally need a host C compiler with AddressSanitizer and UndefinedBehaviorSanitizer; this compiler is not used to build the application. Structure offsets are shared with the assembler through `asm/layout.inc`. The complete machine and its disk devices are not emulated, so hardware validation is still required.
 
 See the [assembly implementation](documentation/assembly.md), [installation](documentation/installing.md), [usage](documentation/using.md), and the [review record](documentation/review.md).
 

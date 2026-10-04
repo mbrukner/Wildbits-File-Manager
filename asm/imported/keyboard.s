@@ -354,7 +354,7 @@ L011D:	dec     _keyboard_queue_entries
 ;
 ; CALL(NextEvent);
 ;
-	jsr     $FF00
+	jsr     _KernelCall_FF00
 	stz     _error
 	ror     _error
 ;
@@ -365,7 +365,7 @@ L011D:	dec     _keyboard_queue_entries
 ;
 ; asm("jsr %w", VECTOR(Yield));
 ;
-	jsr     $FF0C
+	jsr     _KernelCall_FF0C
 ;
 ; return 0;
 ;
@@ -584,7 +584,7 @@ L012E:	lda     #$80
 ;
 ; current_timer_value = CALL(Clock.SetTimer);
 ;
-	jsr     $FFF0
+	jsr     _KernelCall_FFF0
 	stz     _error
 	ror     _error
 	sta     (sp)
@@ -636,7 +636,7 @@ L012E:	lda     #$80
 ;
 ; CALL(Clock.SetTimer);
 ;
-	jsr     $FFF0
+	jsr     _KernelCall_FFF0
 	stz     _error
 	ror     _error
 ;
@@ -706,7 +706,7 @@ L00CC:	jmp     incsp1
 ;
 ; current_seconds = CALL(Clock.SetTimer);
 ;
-	jsr     $FFF0
+	jsr     _KernelCall_FFF0
 	stz     _error
 	ror     _error
 	sta     (sp)
@@ -732,7 +732,7 @@ L00CC:	jmp     incsp1
 ;
 ; CALL(Clock.SetTimer);
 ;
-	jsr     $FFF0
+	jsr     _KernelCall_FFF0
 	stz     _error
 	ror     _error
 ;
