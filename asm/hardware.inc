@@ -1,0 +1,8 @@
+; Wildbits File Manager hardware/storage assignments.
+NUM_STRINGS = 139
+DRIVE_EXTERNAL_SD = 0
+DRIVE_INTERNAL_SD = 1
+DRIVE_IEC_8 = 2
+DRIVE_IEC_9 = 3
+DIRECTORY_RECORD_BANK = 29
+FILENAME_BANK = 27

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build Wildbits File Manager with cc65 2.19; package without touching hardware."""
+"""Assemble Wildbits File Manager from assembly sources; package without touching hardware."""
 import argparse
 import os
 from pathlib import Path
@@ -9,7 +9,6 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULES = 'kernel app bank comm_buffer debug file folder general keyboard list list_panel memsys overlay_em overlay_startup screen sys text'.split()
-OVERLAYS = dict(bank='MEMSYS', memsys='MEMSYS', file='DISKSYS', folder='DISKSYS', overlay_em='EM', overlay_startup='STARTUP', screen='SCREEN')
 
 
 def encode_strings(source):
@@ -43,10 +42,9 @@ def pack_pgz(segments, entry=0x799):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--debug', action='store_true', help='Enable error logging via UART at 115200 baud')
     parser.add_argument('--build-dir', type=Path)
     options = parser.parse_args()
-    build = (options.build_dir or ROOT / 'build_cc65' / ('debug' if options.debug else 'release')).resolve()
+    build = (options.build_dir or ROOT / 'build_asm' / 'release').resolve()
     build.mkdir(parents=True, exist_ok=True)
     cc_home = os.environ.get('CC65_HOME')
     def tool(name):
@@ -57,25 +55,26 @@ def main():
         return found
     def run(*args):
         subprocess.run([str(x) for x in args], cwd=ROOT, check=True)
-    compiler = tool('cc65')
-    version = subprocess.run([compiler, '--version'], capture_output=True, text=True, check=True)
-    # Official V2.19 sources report V2.18; record the exact compiler identification.
-    (build / 'compiler.txt').write_text(version.stdout + version.stderr)
-    for module in MODULES:
-        flags = ['--cpu', '65C02', '-t', 'none', '-I', ROOT / 'config_cc65', '-D_TRY_TO_WRITE_TO_DISK', '-T']
-        if module != 'memsys':
-            flags += ['-Os']
-        if module in OVERLAYS:
-            flags += ['--code-name', 'OVERLAY_' + OVERLAYS[module]]
-        if options.debug:
-            flags += ['-DLOG_LEVEL_1', '-DUSE_SERIAL_LOGGING']
-        run(compiler, *flags, ROOT / (module + '.c'), '-o', build / (module + '.s'))
-        run(tool('ca65'), '--cpu', '65C02', '-t', 'none', build / (module + '.s'), '-o', build / (module + '.o'))
-    for module in ['memory', 'text_ml']:
-        run(tool('ca65'), '--cpu', '65C02', '-t', 'none', ROOT / (module + '.asm'), '-o', build / (module + '.o'))
-    run(tool('ld65'), '-C', ROOT / 'config_cc65/wildbits.cfg', '-o', build / 'wildbits.rom',
-        *[build / (m + '.o') for m in MODULES + ['memory', 'text_ml']], ROOT / 'config_cc65/lib/wildbits.lib',
-        '-m', build / 'wildbits.map', '-Ln', build / 'labels.lbl')
+    include = ROOT / 'asm/runtime/include'
+    runtime = []
+    for source in sorted((ROOT / 'asm/runtime').glob('*.s')):
+        obj = build / ('rt_' + source.stem + '.o')
+        run(tool('ca65'), '--cpu', '65C02', '-t', 'none', '-I', include, '-I', ROOT / 'asm', source, '-o', obj)
+        runtime.append(obj)
+    library = build / 'runtime.lib'
+    if library.exists():
+        library.unlink()
+    run(tool('ar65'), 'a', library, *runtime)
+    objects = []
+    sources = [ROOT / 'asm/imported' / (m + '.s') for m in MODULES]
+    sources += [ROOT / (m + '.asm') for m in ['memory', 'text_ml']]
+    sources += [ROOT / 'asm' / (m + '.s') for m in ['startup', 'directory', 'filenames']]
+    for source in sources:
+        obj = build / (source.stem + '.o')
+        run(tool('ca65'), '--cpu', '65C02', '-t', 'none', '-I', include, '-I', ROOT / 'asm', source, '-o', obj)
+        objects.append(obj)
+    run(tool('ld65'), '-C', ROOT / 'asm/wildbits.cfg', '-o', build / 'wildbits.rom',
+        *objects, library, '-m', build / 'wildbits.map', '-Ln', build / 'labels.lbl')
     strings = encode_strings((ROOT / 'strings/strings.txt').read_text())
     (build / 'strings.bin').write_bytes(strings)
     segments = [(0x799, (build / 'wildbits.rom').read_bytes())]
@@ -93,9 +92,9 @@ def main():
         archive.writestr('flash/wildbits-fm.bin', firmware.ljust(65536, b'\0'))
         for i in range(8):
             archive.writestr(f'flash/fm.{i:02d}', firmware[i*8192:(i+1)*8192].ljust(8192, b'\0'))
-        for doc in ['README.md', 'documentation/installing.md', 'documentation/using.md', 'LICENSE']:
-            archive.write(ROOT / doc, Path(doc).name)
-        cc65_license = 'config_cc65/include/___READ_ME_CC65/LICENSE'
+        for doc in ['README.md', 'documentation/installing.md', 'documentation/using.md', 'documentation/assembly.md', 'documentation/review.md', 'asm/API-NOTICE', 'asm/runtime/README.md', 'LICENSE']:
+            archive.write(ROOT / doc, doc)
+        cc65_license = 'asm/runtime/LICENSE'
         archive.write(ROOT / cc65_license, cc65_license)
     print(f'Built {build / "wildbits-fm.pgz"}: {len(pgz)} bytes')
 

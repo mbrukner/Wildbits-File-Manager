@@ -30,11 +30,11 @@ The active pane supplies the source for operations; the other pane is the destin
 
 Search text directly, or prefix hex bytes with `#`, for example `#00,FF,A1`. The clock dialog accepts `YY-MM-DD HH:MM` in 24-hour notation. Escape cancels dialogs; viewers also accept Run/Stop or `q` at page prompts.
 
-Copying a file to an occupied name chooses a numbered suffix. Files are copied individually; recursive directory copying is not implemented. Saving a memory bank to a filename writes that file. Memory destinations occupied by the running application, its overlays, strings, or filename storage are protected. Flash cannot be written through the memory pane.
+Copying a file to an occupied name chooses a numbered suffix. Files are copied individually; recursive directory copying is not implemented. Saving a memory bank to a filename writes that file. Memory destinations occupied by the running application, its overlays, strings, filename storage or directory records are protected. Flash cannot be written through the memory pane.
 
 ## Current limits
 
-- At most 255 directory entries per pane, further limited by the heap shared by both panes. The second directory can reach this limit sooner; a low-memory warning means the listing is incomplete. Use the release build for normal operation, as debug logging leaves substantially less heap.
+- At most 255 directory entries per pane. Each pane has independent banked record storage; loading one directory does not reduce the other pane's capacity. Longer listings produce an explicit capacity warning. The synthetic home entry on Meatloaf counts toward this limit.
 - Filenames are limited to 31 characters; longer names are skipped with a warning, rather than truncated for file operations.
 - Paths must fit a 255-byte buffer including their terminator.
 - File viewing is limited by the scratch region before filename storage: 224 pages (57,344 bytes). The loader also has an absolute 255-page limit. The final displayed page can include zero padding. Loading a file into a selected RAM bank is limited to 8 KiB; a failed oversized load can leave that bank partially modified.

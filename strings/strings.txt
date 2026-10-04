@@ -78,7 +78,7 @@
 76	6	(More)
 77	14	%u files found
 78	27	Available memory: %zu bytes
-79	52	Directory only partially processed due to low memory
+79	32	Directory limited to %u entries.
 80	11	Hit any key
 81	58	** Hex view of '%s' -- SPACE for more; Run/Stop to exit **
 82	59	** Text view of '%s' -- SPACE for more; Run/Stop to exit **

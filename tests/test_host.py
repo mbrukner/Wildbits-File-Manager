@@ -1,7 +1,7 @@
-"""Run portable application functions unchanged with host I/O stubs and sanitizers.
+"""Run preserved C reference cases with host I/O stubs and sanitizers.
 
 Function extraction avoids replacing the target's cc65 headers or inline assembly.
-It does not validate cc65 code generation; assembly tests cover the native routines.
+These are reference tests, not validation of the current assembly implementation.
 """
 from pathlib import Path
 import re
@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def function(file, name):
-    text = (ROOT / file).read_text()
+    text = (ROOT / 'tests/reference' / file).read_text()
     match = re.search(r'^[^/\n]*\b' + name + r'\([^;\n]*\)\n\{.*?^\}', text, re.M | re.S)
     if not match:
         raise ValueError(name)

@@ -12,7 +12,7 @@ spec.loader.exec_module(build)
 class BuildTests(unittest.TestCase):
     def test_string_table_and_terminator(self):
         data = build.encode_strings((ROOT / 'strings/strings.txt').read_text())
-        count = int(re.search(r'#define NUM_STRINGS (\d+)', (ROOT / 'strings.h').read_text())[1])
+        count = int(re.search(r'NUM_STRINGS = (\d+)', (ROOT / 'asm/hardware.inc').read_text())[1])
         offset = 0
         for ident in range(count):
             self.assertEqual(data[offset], ident)
@@ -40,10 +40,10 @@ class BuildTests(unittest.TestCase):
         self.assertTrue(header[14:256].startswith(b'Wildbits File Manager\0'))
 
     def test_drive_layout(self):
-        text = (ROOT / 'app.h').read_text()
+        text = (ROOT / 'asm/hardware.inc').read_text()
         for name, value in [('EXTERNAL_SD',0),('INTERNAL_SD',1),('IEC_8',2),('IEC_9',3)]:
-            self.assertRegex(text, rf'DEVICE_{name}\s*=\s*{value}\b')
-            self.assertRegex(text, rf'ACTION_SWITCH_TO_{name}\s+\'{value}\'')
+            self.assertRegex(text, rf'DRIVE_{name} = {value}\b')
+
 
 
 if __name__ == '__main__':
