@@ -19,7 +19,7 @@
 	.export		_App_ShowProgressBar
 	.export		_App_HideProgressBar
 	.export		_App_UpdateProgressBar
-	.export		_App_EMDataCopy
+	.import		_App_EMDataCopy
 	.export		_App_DisplayTime
 	.export		_App_Exit
 	.export		_App_LoadOverlay
@@ -427,110 +427,6 @@ L0394:	ldy     #$01
 ; }
 ;
 L0287:	jmp     incsp5
-
-.endproc
-
-; ---------------------------------------------------------------
-; void __near__ App_EMDataCopy (__near__ unsigned char *, unsigned char, unsigned char, unsigned char)
-; ---------------------------------------------------------------
-
-.segment	"CODE"
-
-.proc	_App_EMDataCopy: near
-
-.segment	"CODE"
-
-;
-; {
-;
-	jsr     pusha
-;
-; em_slot = em_bank_num + (page_num / 32);
-;
-	jsr     decsp4
-	ldy     #$05
-	lda     (sp),y
-	lsr     a
-	lsr     a
-	lsr     a
-	lsr     a
-	lsr     a
-	clc
-	iny
-	adc     (sp),y
-	ldy     #$03
-	sta     (sp),y
-;
-; em_cpu_addr = (uint8_t*)((uint16_t)EM_STORAGE_START_CPU_ADDR + ((page_num % 32) * 256));
-;
-	ldy     #$05
-	lda     (sp),y
-	and     #$1F
-	sta     ptr1+1
-	lda     #$00
-	clc
-	pha
-	lda     #$A0
-	adc     ptr1+1
-	tax
-	pla
-	ldy     #$01
-	jsr     staxysp
-;
-; zp_bank_num = em_slot;
-;
-	ldy     #$03
-	lda     (sp),y
-	sta     _zp_bank_num
-;
-; previous_overlay_bank_num = Memory_SwapInNewBank(EM_STORAGE_START_SLOT);
-;
-	lda     #$05
-	jsr     _Memory_SwapInNewBank
-	sta     (sp)
-;
-; if (to_em == true)
-;
-	ldy     #$04
-	lda     (sp),y
-	cmp     #$01
-	bne     L02B3
-;
-; memcpy(em_cpu_addr, cpu_addr, 256);
-;
-	jsr     pushwysp
-	ldy     #$0A
-;
-; else
-;
-	bra     L039B
-;
-; memcpy(cpu_addr, em_cpu_addr, 256);
-;
-L02B3:	ldy     #$0A
-	jsr     pushwysp
-	ldy     #$04
-L039B:	jsr     ldaxysp
-	jsr     pushax
-	ldx     #$01
-	lda     #$00
-	jsr     _memcpy
-;
-; zp_bank_num = previous_overlay_bank_num;
-;
-	lda     (sp)
-	sta     _zp_bank_num
-;
-; previous_overlay_bank_num = Memory_SwapInNewBank(EM_STORAGE_START_SLOT);
-;
-	lda     #$05
-	jsr     _Memory_SwapInNewBank
-	sta     (sp)
-;
-; }
-;
-	ldy     #$09
-	jmp     addysp
 
 .endproc
 

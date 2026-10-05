@@ -75,3 +75,9 @@ Directory regressions now run the actual open/read/close adapter against a model
 ## October 5: version bump and direct startup
 
 Version is now 1.2, defined in `asm/version.inc` and displayed in About. At the user's request, startup goes directly to the file manager. The former title-screen routine, phoenix character artwork, animation palette and title-only strings have been removed from the assembly build. About identifies the application as “Wildbits File Manager 1.2, based on F256 f/manager ©2025 Micah Bly.” The original name was checked against the upstream About string (`F256 f/manager`); its README heading is `f/manager F256`. The original author credit remains in the documentation.
+
+## October 5: blank text and all-zero hex viewers
+
+The viewer's temporary buffer resides in the viewer overlay at $A000. The old `App_EMDataCopy` swapped that same CPU window to the file-data bank before copying into the buffer address. The destination therefore referred to the file-data bank rather than the viewer buffer; the viewer continued reading its zero-filled buffer and could also modify the source data. This conflict originated when the temporary buffer moved from resident BSS into its overlay.
+
+The native replacement stages each page through the reserved resident interbank buffer at $0400, accessing the caller's buffer only while its original overlay is mapped. It handles both read and write directions without allocating additional heap memory. New target regressions reproduced blank text and all-zero hex before the fix, then verified real file loading, displayed text/hex, the final partial page, unchanged source data and restored mappings. Additional cases cover resident/overlay buffers, bank boundaries and all four MMU LUTs. The corrected build still needs hardware confirmation.

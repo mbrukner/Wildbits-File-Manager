@@ -462,6 +462,117 @@ class TargetTests(unittest.TestCase):
                     self.assertEqual(machine.io_control, 4)
                     self.assertEqual(machine.control, 0xA0 | lut)
 
+    def test_em_copy_preserves_overlay_buffers_and_mappings(self):
+        for lut in range(4):
+            machine = BankedMachine(self.pgz, self.labels, lut)
+            machine.control = 0xA0 | lut
+            machine.luts[lut][5] = 10
+            machine.call('_Directory_Select', lut & 1)
+            for cpu_address in (0x500, 0xA000, 0xA080):
+                for page in (0, 1, 31, 32, 223):
+                    with self.subTest(lut=lut, buffer=hex(cpu_address), page=page):
+                        physical = 20 * 8192 + page * 256
+                        pattern = bytes((i * 7 + page + 1) & 255 for i in range(256))
+                        machine.ram[physical:physical+256] = pattern
+                        for i in range(256):
+                            machine[cpu_address+i] = 0
+                        mappings = [row[:] for row in machine.luts]
+                        args = bytes([page, 20]) + cpu_address.to_bytes(2, 'little')
+                        machine.call('_App_EMDataCopy', 0, args)
+                        self.assertEqual(bytes(machine[cpu_address+i] for i in range(256)), pattern)
+                        self.assertEqual(machine.ram[physical:physical+256], pattern)
+                        replacement = bytes(value ^ 0xFF for value in pattern)
+                        for i, value in enumerate(replacement):
+                            machine[cpu_address+i] = value
+                        machine.call('_App_EMDataCopy', 1, args)
+                        self.assertEqual(machine.ram[physical:physical+256], replacement)
+                        self.assertEqual(machine.luts, mappings)
+                        self.assertEqual(machine.control, 0xA0 | lut)
+                        self.assertEqual(machine.io_control, 4)
+
+    def test_file_load_and_text_hex_viewers(self):
+        # Exercise real fopen/fread/close, RAM loading and rendering. Only the
+        # disk vectors and key input are modeled. File payload crosses both
+        # the kernel's 255-byte read limit and application 256-byte pages.
+        payload = (b'Wildbits viewer data.\r\n' * 24) + b'Final file bytes.'
+        for viewer in ('_EM_DisplayAsText', '_EM_DisplayAsHex'):
+            for pane in (0, 1):
+                with self.subTest(viewer=viewer, pane=pane):
+                    machine = BankedMachine(self.pgz, self.labels, 3)
+                    machine.call('_KernelBridge_Init')
+                    machine.call('_kernel_init')
+                    machine.luts[3][5] = 11
+                    machine.call('_Startup_LoadString')
+                    machine.call('_Buffer_Initialize')
+                    machine.call('_Directory_Select', pane)
+                    args = self.labels['_args']
+                    cursor, current_payload = 0, b''
+                    event = bytes(7)
+                    def enqueue(kind, data=b''):
+                        nonlocal event, current_payload
+                        event = bytes([kind, 1, 0, 0, 0, 0, len(data)])
+                        current_payload = data
+                        machine.ram[6*8192+0x300:6*8192+0x307] = event
+                        machine.ram[6*8192+0x400:6*8192+0x400+len(data)] = data
+                    def kernel(vector):
+                        nonlocal cursor
+                        self.assertEqual(machine.luts[3][6], 6, 'File API requires kernel alias')
+                        machine.cpu.p &= ~machine.cpu.CARRY
+                        old_io = machine.io_control
+                        machine.io_control = 4
+                        result = 0
+                        if vector == 0xFF5C:
+                            name = bytes(machine[machine.word(args+11)+i] for i in range(machine[args+13]))
+                            self.assertEqual(name, b'viewer.txt')
+                            enqueue(0x2A)
+                            result = 1
+                        elif vector == 0xFF60:
+                            size = machine[args+4]
+                            self.assertGreater(size, 0)
+                            data = payload[cursor:cursor+size]
+                            cursor += len(data)
+                            enqueue(0x2C if data else 0x30, data)
+                        elif vector == 0xFF68:
+                            enqueue(0x32)
+                        elif vector == 0xFF00:
+                            for i in range(7):
+                                machine[machine.word(args)+i] = machine[0xC300+i]
+                        elif vector == 0xFF04:
+                            self.assertEqual(machine[args+13], len(current_payload))
+                            for i in range(len(current_payload)):
+                                machine[machine.word(args+11)+i] = machine[0xC400+i]
+                        machine.io_control = old_io
+                        return result
+                    for vector in (0xFF5C, 0xFF60, 0xFF68, 0xFF00, 0xFF04):
+                        machine[vector] = 0x60
+                        machine.hooks[vector] = lambda vector=vector: kernel(vector)
+                    for i, byte in enumerate(b'0:viewer.txt\0'):
+                        machine[0xE100+i] = byte
+                    machine.luts[3][5] = 9
+                    machine.call('_File_LoadFileToEM', 20, (0xE100).to_bytes(2, 'little'))
+                    self.assertEqual(machine.cpu.a, 1)
+                    self.assertEqual(machine.word(self.labels['_global_file_bytes_loaded']), len(payload))
+                    pages = (len(payload)+255)//256
+                    stored = bytes(machine.ram[20*8192:20*8192+pages*256])
+                    self.assertEqual(stored, payload.ljust(pages*256, b'\0'))
+                    machine.hooks[self.labels['_Keyboard_GetChar']] = lambda: ord('q')
+                    machine.hooks[self.labels['_Keyboard_GetKeyIfPressed']] = lambda: 0
+                    machine.luts[3][5] = 10
+                    mappings = [row[:] for row in machine.luts]
+                    machine.call(viewer, 0xE100, bytes([pages, 20]))
+                    screen = bytes(machine.io[2])
+                    if viewer.endswith('Text'):
+                        self.assertTrue(b'Wildbits viewer data.' in screen[160:], 'Text viewer omitted file contents')
+                        self.assertTrue(b'Final file bytes.' in screen[160:], 'Text viewer omitted the final partial page')
+                    else:
+                        expected = ' '.join(f'{byte:02X}' for byte in payload[:16]).encode()
+                        self.assertEqual(screen[2*80+11:2*80+11+len(expected)], expected)
+                        expected = ' '.join(f'{byte:02X}' for byte in payload[256:272]).encode()
+                        self.assertEqual(screen[18*80+11:18*80+11+len(expected)], expected)
+                    self.assertEqual(machine.ram[20*8192:20*8192+pages*256], stored)
+                    self.assertEqual(machine.luts, mappings)
+                    self.assertEqual(machine.io_control, 4)
+
     def test_directory_banks_are_write_protected(self):
         machine = BankedMachine(self.pgz, self.labels)
         machine.luts[0][5] = 12

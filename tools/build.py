@@ -68,7 +68,7 @@ def main():
     objects = []
     sources = [ROOT / 'asm/imported' / (m + '.s') for m in MODULES]
     sources += [ROOT / (m + '.asm') for m in ['memory', 'text_ml']]
-    sources += [ROOT / 'asm' / (m + '.s') for m in ['startup', 'directory', 'filenames', 'kernel_bridge']]
+    sources += [ROOT / 'asm' / (m + '.s') for m in ['startup', 'directory', 'filenames', 'kernel_bridge', 'em_copy']]
     for source in sources:
         obj = build / (source.stem + '.o')
         run(tool('ca65'), '--cpu', '65C02', '-t', 'none', '-I', include, '-I', ROOT / 'asm', source, '-o', obj)

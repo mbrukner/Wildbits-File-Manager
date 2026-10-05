@@ -19,6 +19,12 @@ Only one record bank is mapped at a time, into CPU slot 6 ($C000–$DFFF). The I
 
 The directory tests model kernel vector calls and their user-LUT alias, including asynchronous polling and buffer imports/exports. They use distinct names in each pane to detect accidental bank substitution. They exercise both banks at 255 entries, scrolling to the final row, redraws, refreshes and an explicit overflow warning. Startup and native filename tests additionally check the stack/heap setup, all active MMU LUTs, boundary slots and truncation/termination.
 
+## Banked data transfers
+
+`asm/em_copy.s` transfers a 256-byte page through the existing resident interbank buffer at $0400. The caller's buffer can live inside an overlay at $A000–$BFFF: reads stage the bank data before restoring that overlay and filling the buffer; writes stage the caller's data before replacing the overlay with the destination bank. This preserves the current directory mapping and avoids copying through an overlay address while the wrong bank is visible. Both viewers and memory search use this helper.
+
+Target regressions load a known file through the kernel vector model and check its actual text and hex output, including multiple pages and the final partial page. Transfer tests cover both directions, resident and overlay buffers, page/bank boundaries, all active LUTs, and mapping restoration.
+
 ## Further optimization
 
 The initial native replacements remove the directory heap bottleneck and reduce filename-copy overhead. Most UI and filesystem control flow still uses the imported routines and the existing calling convention. Any further hand optimization should preserve their behavior with target tests and report separate CPU-cycle and binary-size measurements. Disk timing must be measured on hardware.
