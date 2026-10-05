@@ -91,7 +91,10 @@ def main():
         archive.writestr('disk/wildbits-fm.pgz', pgz)
         archive.writestr('flash/wildbits-fm.bin', firmware.ljust(65536, b'\0'))
         for i in range(8):
-            archive.writestr(f'flash/fm.{i:02d}', firmware[i*8192:(i+1)*8192].ljust(8192, b'\0'))
+            name = f'fm.{i:02d}'
+            chunk = firmware[i*8192:(i+1)*8192].ljust(8192, b'\0')
+            (build / name).write_bytes(chunk)
+            archive.writestr(f'flash/{name}', chunk)
         for doc in ['README.md', 'documentation/installing.md', 'documentation/using.md', 'documentation/assembly.md', 'documentation/review.md', 'asm/API-NOTICE', 'asm/runtime/README.md', 'LICENSE']:
             archive.write(ROOT / doc, doc)
         cc65_license = 'asm/runtime/LICENSE'

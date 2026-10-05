@@ -21,7 +21,7 @@ Use Python 3 and the **ca65 assembler, ld65 linker and ar65 librarian** from the
 CC65_HOME=/path/to/cc65 ./build.sh
 ```
 
-Output is `build_asm/release/wildbits-fm.pgz`; the same directory contains a ZIP, linker map, labels, and an eight-bank KUP image. Every individual flash chunk is exactly 8 KiB. Building does not access hardware.
+Output is `build_asm/release/wildbits-fm.pgz`; the same directory contains a ZIP, linker map, labels, an eight-bank KUP image, and ROM parts `fm.00` through `fm.07`. Every ROM part is exactly 8 KiB. Building does not access hardware.
 
 ## Assembly conversion
 
