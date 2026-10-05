@@ -1,6 +1,6 @@
 # Wildbits File Manager
 
-A dual-panel file and memory manager for Wildbits, using the banked 65C02 memory map and MicroKernel API.
+A dual-panel file and memory manager for Wildbits, using the banked 65C02 memory map and MicroKernel API. Current version: **1.1b10**.
 
 | Key / drive | Device |
 | --- | --- |
