@@ -1,6 +1,6 @@
 # Using Wildbits File Manager
 
-Disk and flash launches show the animated firebird title screen with Wildbits File Manager branding and the original author credit. Press any key to skip it, or let the animation finish automatically.
+Disk and flash launches open the file manager directly. Press `a` for the version and original author credit.
 
 The active pane supplies the source for operations; the other pane is the destination. Switch panes with Tab or the left/right cursor keys. Move the selection with up/down and open a directory or launch a recognized file with Enter or `l`.
 

@@ -1,4 +1,3 @@
-; Wildbits File Manager application version (major.minor b update).
+; Wildbits File Manager application version.
 MAJOR_VERSION = 1
-MINOR_VERSION = 1
-UPDATE_VERSION = 10
+MINOR_VERSION = 2

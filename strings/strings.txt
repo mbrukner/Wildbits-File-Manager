@@ -133,7 +133,7 @@
 131	69	MicroKernel %c20%c%c Jessie Oberreuter. Build %c%c, 20%c%c-%c%c-%c%c.
 132	42	Compact pexec loader for flash by dwsJason
 133	30	SuperBASIC %c2023 Paul Robson.
-134	57	Wildbits File Manager %c2025 Micah Bly. Version %u.%ub%u.
+134	70	Wildbits File Manager %u.%u, based on F256 f/manager %c2025 Micah Bly.
 135	8	Wildbits
 136	8	Wildbits
 137	18	<unknown hardware>

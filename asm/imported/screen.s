@@ -1749,7 +1749,7 @@ L0F3E:	jsr     _Text_SetChar
 	jsr     _General_GetString
 	jsr     _Buffer_NewMessage
 ;
-; snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, General_GetString(ID_STR_ABOUT_FMANAGER), CH_MISC_COPY, MAJOR_VERSION, MINOR_VERSION, UPDATE_VERSION);
+; snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, General_GetString(ID_STR_ABOUT_FMANAGER), MAJOR_VERSION, MINOR_VERSION, CH_MISC_COPY);
 ;
 L0E48:	lda     _global_string_buff1
 	ldx     _global_string_buff1+1
@@ -1759,15 +1759,13 @@ L0E48:	lda     _global_string_buff1
 	lda     #$86
 	jsr     _General_GetString
 	jsr     pushax
-	lda     #$D7
-	jsr     pusha0
 	lda     #MAJOR_VERSION
 	jsr     pusha0
 	lda     #MINOR_VERSION
 	jsr     pusha0
-	lda     #UPDATE_VERSION
+	lda     #$D7
 	jsr     pusha0
-	ldy     #$0E
+	ldy     #$0C
 	jsr     _snprintf
 ;
 ; Buffer_NewMessage(global_string_buff1);

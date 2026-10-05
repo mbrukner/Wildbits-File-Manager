@@ -1,6 +1,6 @@
 # Wildbits File Manager
 
-A dual-panel file and memory manager for Wildbits, using the banked 65C02 memory map and MicroKernel API. Current version: **1.1b10**.
+A dual-panel file and memory manager for Wildbits, using the banked 65C02 memory map and MicroKernel API. Current version: **1.2**.
 
 | Key / drive | Device |
 | --- | --- |
@@ -25,7 +25,7 @@ Output is `build_asm/release/wildbits-fm.pgz`; the same directory contains a ZIP
 
 ## Assembly conversion
 
-All application modules and runtime helpers now assemble from source. `asm/imported/` preserves cc65-generated assembly for existing features; these routines are not yet all hand-optimized. Native routines in `asm/directory.s` and `asm/filenames.s` replace heap-based file records and filename transfers. Each pane has a separate 8 KiB record bank and a separate filename bank, supporting 255 entries independently of the shared heap. The animated title, drive mapping and existing operations are retained.
+All application modules and runtime helpers now assemble from source. `asm/imported/` preserves cc65-generated assembly for existing features; these routines are not yet all hand-optimized. Native routines in `asm/directory.s` and `asm/filenames.s` replace heap-based file records and filename transfers. Each pane has a separate 8 KiB record bank and a separate filename bank, supporting 255 entries independently of the shared heap. Startup opens the file manager directly. The four-drive mapping and existing operations are retained.
 
 The complete C version is preserved at tag `wildbits-c-final`. Small C excerpts under `tests/reference/` serve only as test oracles. The earlier C build's UART debug option belongs to that tag; the current assembly build has a single configuration.
 
@@ -43,7 +43,7 @@ See the [assembly implementation](documentation/assembly.md), [installation](doc
 
 ## History and credit
 
-Wildbits File Manager is derived from [Micah Bly (WartyMN)'s original file manager](https://github.com/WartyMN/F256-FileManager). Micah's source author credits, copyright notice in the application's About display, and the original [GNU GPL version 3 license](LICENSE) are retained. This is a renamed and modified fork, maintained by [mbrukner](https://github.com/mbrukner). The bundled cc65 material retains its [separate license](asm/runtime/LICENSE).
+Wildbits File Manager is derived from [Micah Bly (WartyMN)'s F256 f/manager](https://github.com/WartyMN/F256-FileManager). Micah's source author credits, copyright notice in the application's About display, and the original [GNU GPL version 3 license](LICENSE) are retained. This is a renamed and modified fork, maintained by [mbrukner](https://github.com/mbrukner). The bundled cc65 material retains its [separate license](asm/runtime/LICENSE).
 
 The original Git history and GitHub fork relationship are preserved. The `upstream` remote points to Micah's repository; `local/debug-checkpoint` preserves Martin Brukner's local debugging changes before the Wildbits review.
 

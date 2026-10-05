@@ -63,7 +63,6 @@
 	.import		_Text_DrawStringAtXY
 	.import		_EM_SearchMemory
 	.import		_Startup_LoadString
-	.import		_Startup_ShowLogo
 	.import		_Startup_InitializeRandomNumGen
 	.import		_App_InitializeDialogBox
 	.import		_Screen_SwapCopyDirectionIndicator
@@ -2373,10 +2372,6 @@ L036D:	lda     #$00
 ; Startup_LoadString();
 ;
 	jsr     _Startup_LoadString
-;
-; Startup_ShowLogo();
-;
-	jsr     _Startup_ShowLogo
 ;
 ; App_InitializeDialogBox();
 ;
