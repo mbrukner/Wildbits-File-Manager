@@ -81,3 +81,11 @@ Version is now 1.2, defined in `asm/version.inc` and displayed in About. At the 
 The viewer's temporary buffer resides in the viewer overlay at $A000. The old `App_EMDataCopy` swapped that same CPU window to the file-data bank before copying into the buffer address. The destination therefore referred to the file-data bank rather than the viewer buffer; the viewer continued reading its zero-filled buffer and could also modify the source data. This conflict originated when the temporary buffer moved from resident BSS into its overlay.
 
 The native replacement stages each page through the reserved resident interbank buffer at $0400, accessing the caller's buffer only while its original overlay is mapped. It handles both read and write directions without allocating additional heap memory. New target regressions reproduced blank text and all-zero hex before the fix, then verified real file loading, displayed text/hex, the final partial page, unchanged source data and restored mappings. Additional cases cover resident/overlay buffers, bank boundaries and all four MMU LUTs. The corrected build still needs hardware confirmation.
+
+## October 5: faster text and hex page updates
+
+Native row rendering now replaces the imported per-character hex output and text wrapping/display path. It formats an 80-column row in overlay RAM and transfers the complete row to character memory. Viewer attributes are initialized once on entry; subsequent pages overwrite rows, pad short lines and erase only the unused tail. Both text and hex empty-file views show their heading.
+
+Compared with `184941f`, the reproducible `tools/benchmark_viewers.py` workload reduces the second full text screen from 4,896,969 to 1,863,373 CPU cycles (61.9% fewer), and hex from 1,005,606 to 365,974 cycles (63.6% fewer). Across two full screens and a partial final screen, totals fall from 10,472,279 to 4,123,613 cycles for text and from 2,369,090 to 977,111 for hex. These are emulated CPU measurements with disk I/O and key-wait time excluded. Hardware responsiveness still needs confirmation.
+
+New regressions check three-page navigation, early exit, short final pages, blank files, exact hex addresses/data, word wrapping and CR/LF boundaries. Display-write counts verify that every body cell is written once per page and that attributes are not rewritten on page advances.

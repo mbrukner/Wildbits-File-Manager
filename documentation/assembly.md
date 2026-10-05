@@ -25,6 +25,14 @@ The directory tests model kernel vector calls and their user-LUT alias, includin
 
 Target regressions load a known file through the kernel vector model and check its actual text and hex output, including multiple pages and the final partial page. Transfer tests cover both directions, resident and overlay buffers, page/bank boundaries, all active LUTs, and mapping restoration.
 
+## Viewer rendering
+
+`asm/viewer_render.s` builds complete 80-column rows in an overlay buffer. Hex addresses, hex digits and raw characters are formatted together; text rows retain the existing word-wrap and CR/LF rules. Each row is copied directly to character memory with one I/O-page switch. The generic per-character output and cursor updates are avoided.
+
+Viewer entry initializes the screen attributes once. Advancing a page overwrites each body row without clearing the screen first; row padding removes old characters at the right edge, and the final unused rows are blanked before waiting for input. No additional resident heap is needed. Empty files still display their heading. Tests count display-memory writes as well as checking the completed pages, so clear-then-redraw cannot silently return.
+
+Run `.venv/bin/python tools/benchmark_viewers.py [build-directory]` to measure rendering CPU cycles with the test emulator. It uses the linked build, preloaded data and immediate key responses; it does not measure disk latency or hardware frame timing.
+
 ## Further optimization
 
 The initial native replacements remove the directory heap bottleneck and reduce filename-copy overhead. Most UI and filesystem control flow still uses the imported routines and the existing calling convention. Any further hand optimization should preserve their behavior with target tests and report separate CPU-cycle and binary-size measurements. Disk timing must be measured on hardware.

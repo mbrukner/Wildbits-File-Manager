@@ -12,6 +12,8 @@
 	.importzp	sp, sreg, regsave, regbank
 	.importzp	tmp1, tmp2, tmp3, tmp4, ptr1, ptr2, ptr3, ptr4
 	.macpack	longbranch
+	.import _Viewer_BeginText, _Viewer_BeginHex, _Viewer_ClearScreen
+	.import _Viewer_TextRow, _Viewer_HexRow, _Viewer_WaitKey
 	.import		_App_EMDataCopy
 	.import		_General_GetString
 	.import		_General_Strnlen
@@ -20,7 +22,6 @@
 	.import		_Text_SetChar
 	.import		_Text_DrawByteAsHexChars
 	.import		_Text_DrawStringAtXY
-	.export		_EM_DisplayStringWithLineBreaks
 	.export		_EM_DisplayAsText
 	.export		_EM_DisplayAsHex
 	.export		_EM_SearchMemory
@@ -40,7 +41,6 @@
 	.importzp	_zp_search_loc_byte
 	.importzp	_zp_search_loc_page
 	.importzp	_zp_search_loc_bank
-	.export		_EM_WrapAndDisplayString
 
 .segment	"DATA"
 
@@ -52,118 +52,6 @@ _em_temp_buffer_384b:
 	.addr	_em_temp_buffer_384b_storage
 
 ; ---------------------------------------------------------------
-; __near__ unsigned char * __near__ EM_DisplayStringWithLineBreaks (__near__ unsigned char *, unsigned char, unsigned char, unsigned char, unsigned char)
-; ---------------------------------------------------------------
-
-.segment	"OVERLAY_EM"
-
-.proc	_EM_DisplayStringWithLineBreaks: near
-
-.segment	"OVERLAY_EM"
-
-;
-; {
-;
-	jsr     pusha
-;
-; uint8_t lines_needed = 0;
-;
-	lda     #$00
-	jsr     pusha
-;
-; char* start_of_string = the_message;
-;
-	ldy     #$08
-	jsr     pushwysp
-;
-; while(*start_of_string)
-;
-	jsr     decsp2
-	bra     L006C
-;
-; next_starting_pos = EM_WrapAndDisplayString(start_of_string, x, y, col_width, 1); // only ask it to wrap ONE line at a time
-;
-L006A:	ldy     #$05
-	jsr     pushwysp
-	ldy     #$0A
-	lda     (sp),y
-	jsr     pusha
-	ldy     #$0A
-	lda     (sp),y
-	jsr     pusha
-	ldy     #$0A
-	lda     (sp),y
-	jsr     pusha
-	lda     #$01
-	jsr     _EM_WrapAndDisplayString
-	jsr     stax0sp
-;
-; ++y;
-;
-	ldy     #$07
-	clc
-	lda     #$01
-	adc     (sp),y
-	sta     (sp),y
-;
-; ++lines_needed;
-;
-	ldy     #$04
-	clc
-	lda     #$01
-	adc     (sp),y
-	sta     (sp),y
-;
-; if (next_starting_pos == NULL)
-;
-	lda     (sp)
-	ldy     #$01
-	ora     (sp),y
-;
-; return NULL;
-;
-	beq     L0277
-;
-; else if (lines_needed >= max_allowed_rows)
-;
-	ldy     #$04
-	lda     (sp),y
-	iny
-	cmp     (sp),y
-	bcc     L007C
-;
-; return next_starting_pos;
-;
-	jsr     ldax0sp
-	bra     L0067
-;
-; start_of_string = next_starting_pos;
-;
-L007C:	jsr     ldax0sp
-	ldy     #$02
-	jsr     staxysp
-;
-; while(*start_of_string)
-;
-L006C:	ldy     #$03
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	lda     (ptr1)
-	bne     L006A
-;
-; return NULL;
-;
-L0277:	tax
-;
-; }
-;
-L0067:	ldy     #$0B
-	jmp     addysp
-
-.endproc
-
-; ---------------------------------------------------------------
 ; void __near__ EM_DisplayAsText (unsigned char, unsigned char, __near__ unsigned char *)
 ; ---------------------------------------------------------------
 
@@ -172,6 +60,8 @@ L0067:	ldy     #$0B
 .proc	_EM_DisplayAsText: near
 
 .segment	"OVERLAY_EM"
+
+	jsr     _Viewer_BeginText
 
 ;
 ; {
@@ -236,7 +126,7 @@ L0067:	ldy     #$0B
 	lda     #$0B
 	jsr     pusha
 	lda     #$00
-	jsr     _Text_ClearScreen
+	jsr     _Viewer_ClearScreen
 ;
 ; snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, General_GetString(ID_STR_MSG_TEXT_VIEW_INSTRUCTIONS), the_name);
 ;
@@ -318,7 +208,7 @@ L00B3:	ldy     #$13
 	lda     #$0B
 	jsr     pusha
 	txa
-	jsr     _Text_ClearScreen
+	jsr     _Viewer_ClearScreen
 ;
 ; snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, General_GetString(ID_STR_MSG_TEXT_VIEW_INSTRUCTIONS), the_name);
 ;
@@ -525,7 +415,7 @@ L00EA:	ldy     #$09
 	lda     #$50
 	jsr     pusha
 	lda     #$01
-	jsr     _EM_DisplayStringWithLineBreaks
+	jsr     _Viewer_TextRow
 	ldy     #$04
 	jsr     staxysp
 ;
@@ -638,7 +528,7 @@ L0291:	lda     #$00
 ;
 ; user_input = Keyboard_GetChar();
 ;
-	jsr     _Keyboard_GetChar
+	jsr     _Viewer_WaitKey
 	ldy     #$12
 	sta     (sp),y
 ;
@@ -873,7 +763,7 @@ L0278:	ldy     #$0D
 ;
 ; Keyboard_GetChar();
 ;
-	jsr     _Keyboard_GetChar
+	jsr     _Viewer_WaitKey
 ;
 ; }
 ;
@@ -891,6 +781,8 @@ L0154:	ldy     #$19
 .proc	_EM_DisplayAsHex: near
 
 .segment	"OVERLAY_EM"
+
+	jsr     _Viewer_BeginHex
 
 ;
 ; {
@@ -1013,7 +905,7 @@ L0178:	ldy     #$0B
 	tya
 	jsr     pusha
 	lda     #$00
-	jsr     _Text_ClearScreen
+	jsr     _Viewer_ClearScreen
 ;
 ; snprintf(global_string_buff1, STORAGE_STRING_BUFFER_1_LEN, General_GetString(ID_STR_MSG_HEX_VIEW_INSTRUCTIONS), the_name);
 ;
@@ -1057,121 +949,28 @@ L0178:	ldy     #$0B
 	adc     (sp),y
 	sta     (sp),y
 ;
-; Text_SetXY(1,y);
+; An empty file still gets its heading before the final key wait.
 ;
-L017B:	lda     #$01
+	ldy     #$12
+	lda     (sp),y
+	jeq     L0296
+;
+; Draw a complete hex row in RAM, then overwrite all 80 screen cells.
+;
+L017B:	ldy     #$0A
+	jsr     ldeaxysp
+	jsr     pusheax
+	ldy     #$0F
+	lda     (sp),y
 	jsr     pusha
-	ldy     #$0C
-	lda     (sp),y
-	jsr     _Text_SetXY
-;
-; Text_SetChar('$');
-;
-	lda     #$24
-	jsr     _Text_SetChar
-;
-; Text_DrawByteAsHexChars( (uint8_t) ((loc_in_file >> 16 ) & 0xff));
-;
-	ldy     #$0A
-	jsr     ldeaxysp
-	lda     sreg
-	jsr     _Text_DrawByteAsHexChars
-;
-; Text_DrawByteAsHexChars( (uint8_t) ((loc_in_file >> 8 ) & 0xff));
-;
-	ldy     #$0A
-	jsr     ldeaxysp
-	txa
-	jsr     _Text_DrawByteAsHexChars
-;
-; Text_DrawByteAsHexChars( (uint8_t) (loc_in_file & 0xff));
-;
-	ldy     #$0A
-	jsr     ldeaxysp
-	jsr     _Text_DrawByteAsHexChars
-;
-; Text_SetXY(11,y);
-;
-	lda     #$0B
-	jsr     pusha
-	ldy     #$0C
-	lda     (sp),y
-	jsr     _Text_SetXY
-;
-; for (n=0; n < HEX_DISPLAY_NUM_CHARS_PER_ROW; n++)
-;
-	lda     #$00
-	ldy     #$0D
-L02A9:	sta     (sp),y
-	cmp     #$10
-	bcs     L01A1
-;
-; Text_DrawByteAsHexChars(buffer_curr_loc[n]);
-;
-	jsr     ldax0sp
-	sta     ptr1
-	stx     ptr1+1
-	ldy     #$0D
-	lda     (sp),y
-	tay
-	lda     (ptr1),y
-	jsr     _Text_DrawByteAsHexChars
-;
-; Text_SetChar(CH_SPACE);
-;
-	lda     #$20
-	jsr     _Text_SetChar
-;
-; for (n=0; n < HEX_DISPLAY_NUM_CHARS_PER_ROW; n++)
-;
-	ldy     #$0D
-	lda     (sp),y
-	ina
-	bra     L02A9
-;
-; Text_SetChar(CH_SPACE);
-;
-L01A1:	lda     #$20
-	jsr     _Text_SetChar
-;
-; Text_SetChar(CH_SPACE);
-;
-	lda     #$20
-	jsr     _Text_SetChar
-;
-; for (n=0; n < HEX_DISPLAY_NUM_CHARS_PER_ROW; n++)
-;
-	lda     #$00
-	ldy     #$0D
-	sta     (sp),y
-	tax
-L029E:	lda     (sp),y
-	cmp     #$10
-	bcs     L029F
-;
-; Text_SetChar(buffer_curr_loc[n]);
-;
-	jsr     ldax0sp
-	sta     ptr1
-	stx     ptr1+1
-	ldy     #$0D
-	lda     (sp),y
-	tay
-	lda     (ptr1),y
-	jsr     _Text_SetChar
-;
-; for (n=0; n < HEX_DISPLAY_NUM_CHARS_PER_ROW; n++)
-;
-	ldy     #$0D
-	ldx     #$00
-	lda     (sp),y
-	ina
-	sta     (sp),y
-	bra     L029E
+	ldy     #$06
+	jsr     ldaxysp
+	jsr     _Viewer_HexRow
 ;
 ; loc_in_file += MEM_DUMP_BYTES_PER_ROW;
 ;
-L029F:	stz     sreg
+	ldx     #$00
+	stz     sreg
 	stz     sreg+1
 	lda     #$10
 	ldy     #$07
@@ -1206,7 +1005,7 @@ L029F:	stz     sreg
 ;
 ; user_input = Keyboard_GetChar();
 ;
-	jsr     _Keyboard_GetChar
+	jsr     _Viewer_WaitKey
 	ldy     #$0F
 	sta     (sp),y
 ;
@@ -1285,7 +1084,12 @@ L01D7:	ldy     #$04
 ;
 ; while (keep_going == true && i < num_pages)
 ;
-L0179:	ldy     #$06
+L0179:	ldy     #$12
+	lda     (sp),y
+	bne     check_more
+	jmp     L0178
+check_more:
+	ldy     #$06
 L02AB:	lda     (sp),y
 	cmp     #$01
 	bne     L0296
@@ -1304,7 +1108,7 @@ L0296:	ldy     #$05
 ;
 ; Keyboard_GetChar();
 ;
-	jsr     _Keyboard_GetChar
+	jsr     _Viewer_WaitKey
 ;
 ; }
 ;
@@ -1835,313 +1639,6 @@ L02AD:	txa
 ; }
 ;
 L01E0:	ldy     #$15
-	jmp     addysp
-
-.endproc
-
-; ---------------------------------------------------------------
-; __near__ unsigned char * __near__ EM_WrapAndDisplayString (__near__ unsigned char *, unsigned char, unsigned char, unsigned char, unsigned char)
-; ---------------------------------------------------------------
-
-.segment	"OVERLAY_EM"
-
-.proc	_EM_WrapAndDisplayString: near
-
-.segment	"OVERLAY_EM"
-
-;
-; {
-;
-	jsr     pusha
-;
-; char* start = the_message;
-;
-	ldy     #$07
-	jsr     pushwysp
-;
-; while (*start && max_allowed_rows--) {
-;
-	jsr     decsp6
-	jmp     L0022
-;
-; count = 0;
-;
-L02C0:	lda     #$00
-;
-; while (start[count] && start[count] != CH_LINE_BREAK && start[count] != CH_LINE_RETURN && count < col_width) ++count;
-;
-	bra     L02BF
-L0028:	clc
-	lda     #$01
-	adc     (sp)
-L02BF:	sta     (sp)
-	ldy     #$07
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	lda     (sp)
-	tay
-	lda     (ptr1),y
-	beq     L02BC
-	ldy     #$07
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	lda     (sp)
-	tay
-	lda     (ptr1),y
-	cmp     #$0A
-	beq     L02BC
-	ldy     #$07
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	lda     (sp)
-	tay
-	lda     (ptr1),y
-	cmp     #$0D
-	beq     L02BC
-	lda     (sp)
-	ldy     #$09
-	cmp     (sp),y
-	bcc     L0028
-;
-; end = start + count;
-;
-L02BC:	ldx     #$00
-	lda     (sp)
-	clc
-	ldy     #$06
-	adc     (sp),y
-	pha
-	txa
-	iny
-	adc     (sp),y
-	tax
-	pla
-	ldy     #$04
-	jsr     staxysp
-;
-; next = end;
-;
-	ldy     #$02
-	jsr     staxysp
-;
-; if (*end == CH_LINE_RETURN || *end == CH_LINE_BREAK) {
-;
-	ldy     #$05
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	lda     (ptr1)
-	cmp     #$0D
-	beq     L02C4
-	ldy     #$05
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	lda     (ptr1)
-	cmp     #$0A
-	bne     L0036
-;
-; ++next;
-;
-L02C4:	ldy     #$02
-	ldx     #$00
-	lda     #$01
-	jsr     addeqysp
-;
-; if (*end == CH_LINE_RETURN && *next == CH_LINE_BREAK) ++next;
-;
-	ldy     #$05
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	lda     (ptr1)
-	cmp     #$0D
-	jne     L0051
-	ldy     #$03
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	lda     (ptr1)
-	cmp     #$0A
-;
-; } else if (*end && count == col_width) {
-;
-	jmp     L02D5
-L0036:	ldy     #$05
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	lda     (ptr1)
-	jeq     L0051
-	lda     (sp)
-	ldy     #$09
-	cmp     (sp),y
-	bne     L0051
-	bra     L0046
-;
-; while (end > start && *end != ' ') --end;
-;
-L02CB:	ldy     #$04
-	jsr     subeqysp
-L0046:	ldy     #$05
-	jsr     ldaxysp
-	sec
-	ldy     #$06
-	sbc     (sp),y
-	sta     tmp1
-	txa
-	iny
-	sbc     (sp),y
-	ora     tmp1
-	bcc     L02BD
-	beq     L02BD
-	ldy     #$05
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	ldx     #$00
-	lda     (ptr1)
-	cmp     #$20
-	beq     L02BD
-	lda     #$01
-	bra     L02CB
-;
-; if (end == start) end = start + count;
-;
-L02BD:	ldy     #$05
-	jsr     ldaxysp
-	ldy     #$06
-	cmp     (sp),y
-	bne     L004B
-	txa
-	iny
-	cmp     (sp),y
-	bne     L004B
-	ldx     #$00
-	lda     (sp)
-	clc
-	dey
-	adc     (sp),y
-	pha
-	txa
-	iny
-	adc     (sp),y
-	tax
-	pla
-	ldy     #$04
-	jsr     staxysp
-;
-; next = end;
-;
-L004B:	ldy     #$05
-	jsr     ldaxysp
-	ldy     #$02
-	jsr     staxysp
-;
-; if (*end == ' ') ++next;
-;
-	ldy     #$05
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	lda     (ptr1)
-	cmp     #$20
-L02D5:	bne     L0051
-	ldy     #$02
-	ldx     #$00
-	lda     #$01
-	jsr     addeqysp
-;
-; saved = *end;
-;
-L0051:	ldy     #$05
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	lda     (ptr1)
-	ldy     #$01
-	sta     (sp),y
-;
-; *end = 0;
-;
-	ldy     #$05
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	lda     #$00
-	sta     (ptr1)
-;
-; Text_DrawStringAtXY(x, y++, start, COLOR_BRIGHT_WHITE, COLOR_BLACK);
-;
-	ldy     #$0B
-	lda     (sp),y
-	jsr     pusha
-	ldy     #$0B
-	lda     (sp),y
-	pha
-	ina
-	sta     (sp),y
-	pla
-	jsr     pusha
-	ldy     #$0B
-	jsr     pushwysp
-	lda     #$0F
-	jsr     pusha
-	lda     #$00
-	jsr     _Text_DrawStringAtXY
-;
-; *end = saved;
-;
-	ldy     #$05
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	ldy     #$01
-	lda     (sp),y
-	sta     (ptr1)
-;
-; start = next;
-;
-	ldy     #$03
-	jsr     ldaxysp
-	ldy     #$06
-	jsr     staxysp
-;
-; while (*start && max_allowed_rows--) {
-;
-L0022:	ldy     #$07
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	lda     (ptr1)
-	beq     L02BE
-	ldy     #$08
-	lda     (sp),y
-	pha
-	dea
-	sta     (sp),y
-	pla
-	tax
-	jne     L02C0
-;
-; return *start ? start : NULL;
-;
-L02BE:	ldy     #$07
-	jsr     ldaxysp
-	sta     ptr1
-	stx     ptr1+1
-	ldx     #$00
-	lda     (ptr1)
-	beq     L001E
-	ldy     #$07
-	jsr     ldaxysp
-;
-; }
-;
-L001E:	ldy     #$0E
 	jmp     addysp
 
 .endproc

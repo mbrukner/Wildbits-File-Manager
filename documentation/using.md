@@ -28,6 +28,8 @@ The active pane supplies the source for operations; the other pane is the destin
 | `b`, `d` | Launch installed BASIC or DOS |
 | `q` | Reset the machine |
 
+Text and hex viewers update complete rows when advancing a page, without clearing the screen first. Shorter rows and the unused bottom rows are erased as part of that update.
+
 Search text directly, or prefix hex bytes with `#`, for example `#00,FF,A1`. The clock dialog accepts `YY-MM-DD HH:MM` in 24-hour notation. Escape cancels dialogs; viewers also accept Run/Stop or `q` at page prompts.
 
 Copying a file to an occupied name chooses a numbered suffix. Files are copied individually; recursive directory copying is not implemented. Saving a memory bank to a filename writes that file. Memory destinations occupied by the running application, its overlays, strings, filename storage or directory records are protected. Flash cannot be written through the memory pane.

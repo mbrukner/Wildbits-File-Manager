@@ -573,6 +573,123 @@ class TargetTests(unittest.TestCase):
                     self.assertEqual(machine.luts, mappings)
                     self.assertEqual(machine.io_control, 4)
 
+    def viewer_frames(self, mode, payload, stop_after=None):
+        # Count display writes as well as checking completed pages. A regression
+        # to clear-then-draw can look correct but doubles character-memory work.
+        class DisplayMachine(BankedMachine):
+            def __setitem__(self, address, value):
+                if hasattr(self, 'writes') and 0xC000 <= address < 0xD2C0 and not self.io_control & 4:
+                    page = self.io_control & 3
+                    if page in self.writes:
+                        self.writes[page][address-0xC000] += 1
+                super().__setitem__(address, value)
+        machine = DisplayMachine(self.pgz, self.labels, 3)
+        machine.luts[3][5] = 11
+        machine.call('_Startup_LoadString')
+        machine.call('_Directory_Select', 1)
+        machine.luts[3][5] = 10
+        pages = (len(payload)+255)//256
+        machine.ram[20*8192:20*8192+pages*256] = payload.ljust(pages*256, b'\0')
+        for i, value in enumerate(b'viewer-test\0'):
+            machine[0xE100+i] = value
+        machine.io[2][:4800] = b'X'*4800
+        machine.io[3][:4800] = b'\x12'*4800
+        machine.writes = {2: [0]*4800, 3: [0]*4800}
+        frames = []
+        def key():
+            frames.append((bytes(machine.io[2][:4800]), bytes(machine.io[3][:4800]), machine.writes))
+            self.assertLess(len(frames), 10, 'Viewer did not finish')
+            machine.writes = {2: [0]*4800, 3: [0]*4800}
+            return ord('q') if stop_after and len(frames) >= stop_after else ord(' ')
+        machine.hooks[self.labels['_Keyboard_GetChar']] = key
+        mappings = [row[:] for row in machine.luts]
+        machine.call('_EM_DisplayAs'+mode, 0xE100, bytes([pages, 20]), limit=20_000_000)
+        self.assertEqual(machine.luts, mappings)
+        self.assertEqual(machine.io_control, 4)
+        self.assertEqual(machine.ram[20*8192:20*8192+len(payload)], payload)
+        return frames
+
+    def test_viewer_pagination_overwrites_rows_without_clearing(self):
+        for mode in ('Text', 'Hex'):
+            with self.subTest(mode=mode):
+                if mode == 'Text':
+                    lines = [f'{i:03d} ' + ('longer line contents' if i < 57 else 'short') for i in range(120)]
+                    payload = ('\n'.join(lines)).encode()
+                else:
+                    payload = bytes(range(256))*8
+                frames = self.viewer_frames(mode, payload)
+                self.assertEqual(len(frames), 3)
+                for index, (chars, attrs, writes) in enumerate(frames):
+                    self.assertIn(b'viewer-test', chars[:160])
+                    self.assertEqual(chars[59*80:], b' '*80)
+                    # Every body cell is written once: by a completed row or
+                    # by the final tail erase, never by an initial page clear.
+                    self.assertEqual(set(writes[2][160:]), {1})
+                    self.assertEqual(set(writes[3][160:]), {1} if index == 0 else {0})
+                    self.assertEqual(set(attrs[160:]), {0xF0 if mode == 'Text' else 0xB0})
+                    if mode == 'Text':
+                        visible = lines[index*57:(index+1)*57]
+                        for row, line in enumerate(visible, 2):
+                            self.assertEqual(chars[row*80:(row+1)*80], line.encode().ljust(80, b' '))
+                        tail = (2+len(visible))*80
+                        self.assertEqual(chars[tail:], b' '*(4800-tail))
+                    else:
+                        rows = min(57, len(payload)//16-index*57)
+                        for row in range(rows):
+                            offset = (index*57+row)*16
+                            self.assertEqual(chars[(row+2)*80+1:(row+2)*80+8], f'${offset:06X}'.encode())
+                            expected = ' '.join(f'{byte:02X}' for byte in payload[offset:offset+16]).encode()
+                            self.assertEqual(chars[(row+2)*80+11:(row+2)*80+58], expected)
+                        tail = (2+rows)*80
+                        self.assertEqual(chars[tail:], b' '*(4800-tail))
+                # Exiting on the first page must not draw or load another page.
+                first = self.viewer_frames(mode, payload, stop_after=1)
+                self.assertEqual(len(first), 1)
+                self.assertEqual(first[0][:2], frames[0][:2])
+
+    def test_empty_viewers_erase_previous_content_and_show_heading(self):
+        for mode in ('Text', 'Hex'):
+            with self.subTest(mode=mode):
+                frames = self.viewer_frames(mode, b'')
+                self.assertEqual(len(frames), 1)
+                chars, attrs, writes = frames[0]
+                self.assertIn(b'viewer-test', chars[:160])
+                self.assertEqual(chars[160:], b' '*(4800-160))
+                self.assertEqual(set(writes[2][160:]), {1})
+
+    def test_native_text_rows_preserve_wrap_and_line_endings(self):
+        for data in (b'', b'hello', b'\nnext', b'one\r\ntwo', b'one\rtwo',
+                     b'one\ntwo', b'one\n\rtwo', b'a'*80, b'a'*81,
+                     b'a'*80+b'\r\nnext', b'word '*25, b' '*90,
+                     b'a'*79+b' more', b' '+b'x'*90):
+            with self.subTest(data=data):
+                machine = BankedMachine(self.pgz, self.labels)
+                machine.luts[0][5] = 10
+                machine.call('_Directory_Select', 0)
+                for i, value in enumerate(data+b'\0'):
+                    machine[0xE100+i] = value
+                terminated = data+b'\0'
+                count = 0
+                while count < 80 and terminated[count] not in (0, 10, 13):
+                    count += 1
+                end = next_offset = count
+                if terminated[count] in (10, 13):
+                    next_offset += 1
+                    if terminated[count] == 13 and terminated[next_offset] == 10:
+                        next_offset += 1
+                elif terminated[count] and count == 80:
+                    while end > 0 and terminated[end] != 32:
+                        end -= 1
+                    if not end:
+                        end = count
+                    next_offset = end + (terminated[end] == 32)
+                machine.call('_Viewer_TextRow', 1, bytes([80, 7, 0, 0, 0xE1]))
+                self.assertEqual(machine.io[2][7*80:8*80], data[:end].ljust(80, b' '))
+                expected = 0xE100+next_offset if terminated[next_offset] else 0
+                self.assertEqual(machine.cpu.a+256*machine.cpu.x, expected)
+                self.assertEqual(bytes(machine[0xE100+i] for i in range(len(data)+1)), terminated)
+                self.assertEqual(machine.io_control, 4)
+
     def test_directory_banks_are_write_protected(self):
         machine = BankedMachine(self.pgz, self.labels)
         machine.luts[0][5] = 12
